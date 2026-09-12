@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../screens/login_screen.dart';
 import '../screens/shell_screen.dart';
 import '../services/auth_service.dart';
-import '../theme/app_theme.dart';
 import 'orbis_mark.dart';
 
 class AuthGate extends StatelessWidget {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -176,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen>
                           style: AppText.serif(size: compact ? 32 : 40),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'Todo o seu planejamento em um só lugar',
                           style: TextStyle(
                             fontSize: 13.5,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/nav_items.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_sidebar.dart';
+import 'variable_expenses_screen.dart';
 
 class ShellScreen extends StatefulWidget {
   const ShellScreen({super.key});
@@ -41,7 +42,12 @@ class _ShellScreenState extends State<ShellScreen> {
                   ),
                 );
               },
-              child: _Placeholder(key: ValueKey(item.id), item: item),
+              child: switch (item.id) {
+                'variaveis' => const VariableExpensesScreen(
+                    key: ValueKey('variaveis'),
+                  ),
+                _ => _Placeholder(key: ValueKey(item.id), item: item),
+              },
             ),
           ),
         ],
