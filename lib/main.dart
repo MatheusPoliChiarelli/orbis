@@ -1,6 +1,15 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+import 'firebase_options.dart';
+import 'theme/app_theme.dart';
+import 'widgets/auth_gate.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const OrbisApp());
 }
 
@@ -12,11 +21,8 @@ class OrbisApp extends StatelessWidget {
     return MaterialApp(
       title: 'Orbis',
       debugShowCheckedModeBanner: false,
-      home: const Scaffold(
-        body: Center(
-          child: Text('Orbis'),
-        ),
-      ),
+      theme: AppTheme.build(),
+      home: const AuthGate(),
     );
   }
 }
