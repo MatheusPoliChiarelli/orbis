@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../screens/login_screen.dart';
+import '../screens/shell_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import 'orbis_mark.dart';
@@ -20,7 +21,7 @@ class AuthGate extends StatelessWidget {
         if (snapshot.data == null) {
           return const LoginScreen();
         }
-        return const _TempHome();
+        return const ShellScreen();
       },
     );
   }
@@ -37,35 +38,3 @@ class _Splash extends StatelessWidget {
   }
 }
 
-class _TempHome extends StatelessWidget {
-  const _TempHome();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = AuthService.currentUser;
-
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const OrbisMark(size: 96),
-            const SizedBox(height: 24),
-            Text(
-              'Olá, ${user?.displayName ?? user?.email ?? ''}',
-              style: AppText.serif(size: 30),
-            ),
-            const SizedBox(height: 24),
-            TextButton(
-              onPressed: AuthService.signOut,
-              child: const Text(
-                'Sair',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
