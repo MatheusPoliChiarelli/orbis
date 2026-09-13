@@ -6,6 +6,7 @@ import '../widgets/app_sidebar.dart';
 import 'variable_expenses_screen.dart';
 import 'month_summary_screen.dart';
 import 'year_summary_screen.dart';
+import 'fixed_costs_screen.dart';
 
 class ShellScreen extends StatefulWidget {
   const ShellScreen({super.key});
@@ -56,6 +57,9 @@ class _ShellScreenState extends State<ShellScreen> {
                   ),
                 'resumo-ano' => const YearSummaryScreen(
                     key: ValueKey('resumo-ano'),
+                  ),
+                'fixos' => const FixedCostsScreen(
+                    key: ValueKey('fixos'),
                   ),
                 _ => _Placeholder(key: ValueKey(item.id), item: item),
               },

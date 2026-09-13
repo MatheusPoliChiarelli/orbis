@@ -4,6 +4,7 @@ import '../models/month_budget.dart';
 import '../models/transaction.dart';
 import '../utils/formatters.dart';
 import 'auth_service.dart';
+import '../models/fixed_cost.dart';
 
 class FinanceService {
   FinanceService._();
@@ -14,6 +15,9 @@ class FinanceService {
     final uid = AuthService.currentUser!.uid;
     return _db.collection('users').doc(uid);
   }
+
+  static CollectionReference<Map<String, dynamic>> get _fixedCosts =>
+      _userDoc.collection('fixedCosts');
 
   static CollectionReference<Map<String, dynamic>> get _transactions =>
       _userDoc.collection('transactions');
@@ -95,4 +99,34 @@ class FinanceService {
       SetOptions(merge: true),
     );
   }
+
+  
+  static Stream<List<FixedCost>> watchFixedCosts() {
+    return _fixedCosts
+        .snapshots()
+        .map((snap) => snap.docs.map(FixedCost.fromDoc).toList());
+  }
+
+  static Future<void> addFixedCost(FixedCost item) async {
+    await _fixedCosts.add(item.toMap());
+  }
+
+  static Future<void> updateFixedCost(FixedCost item) async {
+    await _fixedCosts.doc(item.id).update(item.toMap());
+  }
+
+  static Future<void> deleteFixedCost(String id) async {
+    final children =
+        await _fixedCosts.where('parentId', isEqualTo: id).get();
+
+    final batch = _db.batch();
+    for (final doc in children.docs) {
+      batch.delete(doc.reference);
+    }
+    batch.delete(_fixedCosts.doc(id));
+    await batch.commit();
+  }
+
+
+
 }
