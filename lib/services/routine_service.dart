@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/default_routine.dart';
 import '../models/routine_block.dart';
 import 'auth_service.dart';
+import '../utils/formatters.dart';
 
 class RoutineService {
   RoutineService._();
@@ -24,6 +25,21 @@ class RoutineService {
     return _blocks.snapshots().map(
           (snap) => snap.docs.map(RoutineBlock.fromDoc).toList()
             ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes)),
+        );
+  }
+
+  static Stream<Map<String, RoutineLog>> watchWeekLogs(DateTime weekStart) {
+    final start = dayKey(weekStart);
+    final end = dayKey(weekStart.add(const Duration(days: 6)));
+
+    return _logs
+        .where(FieldPath.documentId, isGreaterThanOrEqualTo: start)
+        .where(FieldPath.documentId, isLessThanOrEqualTo: end)
+        .snapshots()
+        .map(
+          (snap) => {
+            for (final doc in snap.docs) doc.id: RoutineLog.fromDoc(doc),
+          },
         );
   }
 

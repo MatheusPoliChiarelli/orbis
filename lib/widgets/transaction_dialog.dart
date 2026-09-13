@@ -7,6 +7,7 @@ import '../models/transaction.dart';
 import '../services/finance_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
+import 'bank_logo.dart';
 
 enum TxStep { category, amount, description, toAccount }
 
@@ -102,6 +103,9 @@ class _TransactionDialogState extends State<TransactionDialog> {
       _descriptionController.text = existing.description;
       _listIndex = _categories.indexWhere((c) => c.id == existing.categoryId);
       if (_listIndex < 0) _listIndex = 0;
+    } else if (_type != TxType.transfer) {
+      _category = _categories.first;
+      _listIndex = 0;
     }
 
     _step = _stepFlow.first;
@@ -488,8 +492,19 @@ class _TransactionDialogState extends State<TransactionDialog> {
         fontSize: prefix == null ? 14 : 20,
         color: AppColors.textMuted,
       ),
-      prefixText: prefix,
-      prefixStyle: AppText.money(size: 16, color: AppColors.textMuted),
+      prefixIcon: prefix == null
+          ? null
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 6, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                widthFactor: 1,
+                child: Text(
+                  prefix.trim(),
+                  style: AppText.money(size: 16, color: AppColors.textMuted),
+                ),
+              ),
+            ),
       filled: true,
       fillColor: AppColors.bg,
       isDense: true,
@@ -676,7 +691,7 @@ class _TargetChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 130),
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
+          padding: const EdgeInsets.fromLTRB(7, 6, 16, 6),
           decoration: BoxDecoration(
             color: selected
                 ? account.color.withValues(alpha: 0.14)
@@ -692,15 +707,8 @@ class _TargetChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: account.color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
+              BankLogo(accountId: accountId, size: 22),
+              const SizedBox(width: 9),
               Text(
                 account.name,
                 style: TextStyle(
@@ -728,7 +736,7 @@ class _AccountPill extends StatelessWidget {
     final account = accountById(accountId);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(4, 3, 10, 3),
       decoration: BoxDecoration(
         color: account.color.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(AppRadius.chip),
@@ -737,13 +745,20 @@ class _AccountPill extends StatelessWidget {
           width: AppBorders.normal,
         ),
       ),
-      child: Text(
-        account.name,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: account.color.withValues(alpha: 0.95),
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BankLogo(accountId: accountId, size: 16),
+          const SizedBox(width: 7),
+          Text(
+            account.name,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: account.color.withValues(alpha: 0.95),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/accounts.dart';
 import '../theme/app_theme.dart';
+import 'bank_logo.dart';
 
 class AccountSelector extends StatelessWidget {
   const AccountSelector({
@@ -63,7 +64,7 @@ class _AccountChipState extends State<_AccountChip> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          padding: const EdgeInsets.fromLTRB(9, 7, 18, 7),
           decoration: BoxDecoration(
             color: selected
                 ? brand.withValues(alpha: 0.14)
@@ -88,15 +89,8 @@ class _AccountChipState extends State<_AccountChip> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: selected ? brand : brand.withValues(alpha: 0.45),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 9),
+              BankLogo(accountId: widget.account.id, size: 30),
+              const SizedBox(width: 11),
               Text(
                 widget.account.name,
                 style: TextStyle(

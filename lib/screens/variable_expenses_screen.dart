@@ -271,28 +271,32 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                           children: [
                             DaySummaryCards(transactions: dayTx),
                             const SizedBox(height: 14),
-                            IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: CategoryBreakdownCard(
-                                      transactions: dayTx,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: TransactionListCard(
-                                      transactions: dayTx,
-                                      showAccountBadge: _isGeneral,
-                                      onEdit: (tx) => _openDialog(
-                                        type: tx.type,
-                                        existing: tx,
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 320),
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: CategoryBreakdownCard(
+                                        transactions: dayTx,
                                       ),
-                                      onDelete: _confirmDelete,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: TransactionListCard(
+                                        transactions: dayTx,
+                                        showAccountBadge: _isGeneral,
+                                        onEdit: (tx) => _openDialog(
+                                          type: tx.type,
+                                          existing: tx,
+                                        ),
+                                        onDelete: _confirmDelete,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -358,7 +362,6 @@ class _Header extends StatelessWidget {
     final balances = <String, double>{
       for (final account in accounts) account.id: _balanceFor(account.id),
     };
-    final current = balances[accountId] ?? 0;
     final isGeneral = accountId == kGeneralAccountId;
 
     return Padding(
@@ -386,31 +389,6 @@ class _Header extends StatelessWidget {
                 icon: Icons.chevron_right,
                 onTap: () => onChangeMonth(1),
               ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Saldo atual',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatMoney(current),
-                    style: AppText.money(
-                      size: 22,
-                      weight: FontWeight.w600,
-                      color: current < 0
-                          ? AppColors.expense
-                          : AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -422,21 +400,23 @@ class _Header extends StatelessWidget {
                 balances: balances,
               ),
               const Spacer(),
-              _ActionButton(
-                label: 'Entrada',
-                icon: Icons.arrow_upward,
-                color: AppColors.income,
-                enabled: !isGeneral,
-                onTap: onNewIncome,
-              ),
-              const SizedBox(width: 10),
-              _ActionButton(
-                label: 'Saída',
-                icon: Icons.arrow_downward,
-                color: AppColors.expense,
-                enabled: !isGeneral,
-                onTap: onNewExpense,
-              ),
+              if (!isGeneral) ...[
+                _ActionButton(
+                  label: 'Entrada',
+                  icon: Icons.arrow_upward,
+                  color: AppColors.income,
+                  enabled: true,
+                  onTap: onNewIncome,
+                ),
+                const SizedBox(width: 10),
+                _ActionButton(
+                  label: 'Saída',
+                  icon: Icons.arrow_downward,
+                  color: AppColors.expense,
+                  enabled: true,
+                  onTap: onNewExpense,
+                ),
+              ],
             ],
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/habit.dart';
 import '../services/habit_service.dart';
@@ -7,10 +8,11 @@ import '../utils/formatters.dart';
 import '../widgets/app_card.dart';
 import '../widgets/habit_dialog.dart';
 
-const _nameColumnWidth = 230.0;
+const _nameColumnWidth = 180.0;
 const _cellSize = 26.0;
-const _cellGap = 3.0;
+const _cellGap = 4.0;
 const _rowHeight = 34.0;
+const _statsWidth = 92.0;
 
 class HabitsScreen extends StatefulWidget {
   const HabitsScreen({super.key});
@@ -21,21 +23,101 @@ class HabitsScreen extends StatefulWidget {
 
 class _HabitsScreenState extends State<HabitsScreen> {
   DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
-
   final _gridController = ScrollController();
+
+  int? _cursorDay;
+  int _cursorRow = 0;
+  List<Habit> _habits = const [];
 
   String get _monthKey => monthKey(_month);
 
   int get _daysInMonth => DateTime(_month.year, _month.month + 1, 0).day;
 
   @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKey);
+  }
+
+  @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKey);
     _gridController.dispose();
     super.dispose();
   }
 
   void _changeMonth(int delta) {
-    setState(() => _month = DateTime(_month.year, _month.month + delta));
+    setState(() {
+      _month = DateTime(_month.year, _month.month + delta);
+      _cursorDay = null;
+    });
+  }
+
+  bool _handleKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (!mounted) return false;
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
+
+    final focused = FocusManager.instance.primaryFocus?.context?.widget;
+    if (focused is EditableText) return false;
+
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.add ||
+        key == LogicalKeyboardKey.numpadAdd ||
+        key == LogicalKeyboardKey.equal) {
+      showHabitDialog(context: context);
+      return true;
+    }
+
+    if (_cursorDay == null || _habits.isEmpty) return false;
+    if (key == LogicalKeyboardKey.escape) {
+      setState(() => _cursorDay = null);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      setState(() {
+        _cursorRow = (_cursorRow + 1).clamp(0, _habits.length - 1);
+      });
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        _cursorRow = (_cursorRow - 1).clamp(0, _habits.length - 1);
+      });
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      setState(() => _cursorDay = (_cursorDay! + 1).clamp(1, _daysInMonth));
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      setState(() => _cursorDay = (_cursorDay! - 1).clamp(1, _daysInMonth));
+      return true;
+    }
+
+    final mark = switch (key) {
+      LogicalKeyboardKey.keyS => HabitMark.done,
+      LogicalKeyboardKey.keyN => HabitMark.missed,
+      LogicalKeyboardKey.keyA => HabitMark.skipped,
+      LogicalKeyboardKey.space || LogicalKeyboardKey.backspace =>
+        HabitMark.none,
+      _ => null,
+    };
+
+    if (mark == null) return false;
+
+    HabitService.setMark(
+      monthKey: _monthKey,
+      habitId: _habits[_cursorRow].id,
+      day: _cursorDay!,
+      mark: mark,
+    );
+
+    setState(() {
+      if (_cursorRow < _habits.length - 1) _cursorRow++;
+    });
+    return true;
   }
 
   Future<void> _confirmDelete(Habit habit) async {
@@ -51,7 +133,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
           style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
         ),
         content: Text(
-          'Excluir ${habit.name}? As marcações continuam gravadas, mas deixam de aparecer',
+          'Excluir ${habit.name}?',
           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         actions: [
@@ -86,16 +168,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
         return StreamBuilder<HabitLog>(
           stream: HabitService.watchLog(_monthKey),
           builder: (context, logSnap) {
-            final habits =
-                (habitSnap.data ?? const <Habit>[]).where((h) => h.active).toList();
+            _habits = (habitSnap.data ?? const <Habit>[])
+                .where((h) => h.active)
+                .toList();
             final log = logSnap.data ?? HabitLog.empty(_monthKey);
 
-            final groups = habits
-                .map((h) => h.group)
-                .whereType<String>()
-                .toSet()
-                .toList()
-              ..sort();
+            if (_cursorRow >= _habits.length) _cursorRow = 0;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,12 +201,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
                         onTap: () => _changeMonth(1),
                       ),
                       const Spacer(),
+                      if (_cursorDay != null) ...[
+                        const _KeyHints(),
+                        const SizedBox(width: 16),
+                      ],
                       _AddButton(
                         label: 'Novo hábito',
-                        onTap: () => showHabitDialog(
-                          context: context,
-                          groups: groups,
-                        ),
+                        onTap: () => showHabitDialog(context: context),
                       ),
                     ],
                   ),
@@ -140,25 +219,30 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
                       child: AppCard(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 12, 18),
                         title: 'Grade do mês',
-                        subtitle:
-                            '${habits.length} hábitos acompanhados em ${monthLabel(_month).toLowerCase()}',
-                        child: habits.isEmpty
+                        subtitle: _cursorDay == null
+                            ? 'Clique numa célula para marcar pelo teclado'
+                            : 'Marcando o dia $_cursorDay',
+                        child: _habits.isEmpty
                             ? const EmptyHint(
                                 message: 'Nenhum hábito cadastrado ainda',
                               )
                             : _Grid(
-                                habits: habits,
-                                groups: groups,
+                                habits: _habits,
                                 log: log,
                                 month: _month,
                                 daysInMonth: _daysInMonth,
-                                monthKey: _monthKey,
                                 controller: _gridController,
+                                cursorDay: _cursorDay,
+                                cursorRow: _cursorRow,
+                                onCellTap: (row, day) => setState(() {
+                                  _cursorRow = row;
+                                  _cursorDay = day;
+                                }),
                                 onEdit: (habit) => showHabitDialog(
                                   context: context,
                                   existing: habit,
-                                  groups: groups,
                                 ),
                                 onDelete: _confirmDelete,
                               ),
@@ -175,26 +259,92 @@ class _HabitsScreenState extends State<HabitsScreen> {
   }
 }
 
+class _KeyHints extends StatelessWidget {
+  const _KeyHints();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const [
+        _Hint(key_: 'S', label: 'feito', color: AppColors.income),
+        SizedBox(width: 10),
+        _Hint(key_: 'N', label: 'não feito', color: AppColors.expense),
+        SizedBox(width: 10),
+        _Hint(key_: 'A', label: 'não valia', color: AppColors.accent),
+        SizedBox(width: 10),
+        _Hint(key_: 'esc', label: 'sair', color: AppColors.textMuted),
+      ],
+    );
+  }
+}
+
+class _Hint extends StatelessWidget {
+  const _Hint({
+    required this.key_,
+    required this.label,
+    required this.color,
+  });
+
+  final String key_;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.13),
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: color.withValues(alpha: 0.38),
+              width: AppBorders.normal,
+            ),
+          ),
+          child: Text(
+            key_,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
 class _Grid extends StatelessWidget {
   const _Grid({
     required this.habits,
-    required this.groups,
     required this.log,
     required this.month,
     required this.daysInMonth,
-    required this.monthKey,
     required this.controller,
+    required this.cursorDay,
+    required this.cursorRow,
+    required this.onCellTap,
     required this.onEdit,
     required this.onDelete,
   });
 
   final List<Habit> habits;
-  final List<String> groups;
   final HabitLog log;
   final DateTime month;
   final int daysInMonth;
-  final String monthKey;
   final ScrollController controller;
+  final int? cursorDay;
+  final int cursorRow;
+  final void Function(int row, int day) onCellTap;
   final ValueChanged<Habit> onEdit;
   final ValueChanged<Habit> onDelete;
 
@@ -205,21 +355,6 @@ class _Grid extends StatelessWidget {
         today.year == month.year && today.month == month.month;
     final cutoff = isCurrentMonth ? today.day : daysInMonth;
 
-    final ordered = <Habit>[];
-    final headers = <int, String>{};
-
-    for (final group in groups) {
-      final inGroup = habits.where((h) => h.group == group).toList();
-      if (inGroup.isEmpty) continue;
-      headers[ordered.length] = group;
-      ordered.addAll(inGroup);
-    }
-    final ungrouped = habits.where((h) => h.group == null).toList();
-    if (ungrouped.isNotEmpty) {
-      if (groups.isNotEmpty) headers[ordered.length] = 'Outros';
-      ordered.addAll(ungrouped);
-    }
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -229,20 +364,20 @@ class _Grid extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 30),
-              for (var i = 0; i < ordered.length; i++) ...[
-                if (headers.containsKey(i)) _GroupHeader(label: headers[i]!),
+              for (var i = 0; i < habits.length; i++)
                 _NameCell(
-                  habit: ordered[i],
-                  onEdit: () => onEdit(ordered[i]),
-                  onDelete: () => onDelete(ordered[i]),
+                  habit: habits[i],
+                  highlighted: cursorDay != null && i == cursorRow,
+                  onEdit: () => onEdit(habits[i]),
+                  onDelete: () => onDelete(habits[i]),
                 ),
-              ],
             ],
           ),
         ),
         Expanded(
           child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            behavior:
+                ScrollConfiguration.of(context).copyWith(scrollbars: false),
             child: SingleChildScrollView(
               controller: controller,
               scrollDirection: Axis.horizontal,
@@ -261,49 +396,66 @@ class _Grid extends StatelessWidget {
                                 '$day',
                                 style: AppText.money(
                                   size: 9.5,
-                                  color: isCurrentMonth && day == today.day
-                                      ? AppColors.accent
-                                      : AppColors.textMuted,
-                                  weight: isCurrentMonth && day == today.day
+                                  color: day == cursorDay
+                                      ? AppColors.accentHover
+                                      : (isCurrentMonth && day == today.day
+                                          ? AppColors.accent
+                                          : AppColors.textMuted),
+                                  weight: day == cursorDay ||
+                                          (isCurrentMonth && day == today.day)
                                       ? FontWeight.w700
                                       : FontWeight.w500,
                                 ),
                               ),
                             ),
                           ),
-                        const SizedBox(width: 16),
-                        const SizedBox(
-                          width: 96,
-                          child: Center(
-                            child: Text(
-                              'MÊS',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
-                  for (var i = 0; i < ordered.length; i++) ...[
-                    if (headers.containsKey(i))
-                      const SizedBox(height: _groupHeaderHeight),
+                  for (var i = 0; i < habits.length; i++)
                     _HabitRow(
-                      habit: ordered[i],
+                      habit: habits[i],
+                      row: i,
                       log: log,
-                      monthKey: monthKey,
                       daysInMonth: daysInMonth,
                       cutoff: cutoff,
                       today: isCurrentMonth ? today.day : null,
+                      cursorDay: cursorDay,
+                      cursorRow: cursorRow,
+                      onCellTap: onCellTap,
                     ),
-                  ],
                 ],
               ),
             ),
+          ),
+        ),
+        SizedBox(
+          width: _statsWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(
+                height: 30,
+                child: Center(
+                  child: Text(
+                    'MÊS',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+              for (final habit in habits)
+                _StatsCell(
+                  habit: habit,
+                  log: log,
+                  daysInMonth: daysInMonth,
+                  cutoff: cutoff,
+                ),
+            ],
           ),
         ),
       ],
@@ -311,28 +463,79 @@ class _Grid extends StatelessWidget {
   }
 }
 
-const _groupHeaderHeight = 30.0;
+class _StatsCell extends StatelessWidget {
+  const _StatsCell({
+    required this.habit,
+    required this.log,
+    required this.daysInMonth,
+    required this.cutoff,
+  });
 
-class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.label});
-
-  final String label;
+  final Habit habit;
+  final HabitLog log;
+  final int daysInMonth;
+  final int cutoff;
 
   @override
   Widget build(BuildContext context) {
+    final done = log.doneCount(habit.id, daysInMonth);
+    final expected = log.expectedCount(habit.id, daysInMonth);
+    final streak = log.streak(habit.id, cutoff);
+    final share = expected == 0 ? 0.0 : (done / expected).clamp(0.0, 1.0);
+
     return SizedBox(
-      height: _groupHeaderHeight,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
-            letterSpacing: 1.1,
+      height: _rowHeight,
+      child: Row(
+        children: [
+              const SizedBox(width: 8),
+          SizedBox(
+            width: 20,
+            child: Text(
+              '$done',
+              textAlign: TextAlign.right,
+              style: AppText.money(
+                size: 12,
+                weight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
-        ),
+          SizedBox(
+            width: 26,
+            child: Text(
+              '/$expected',
+              style: AppText.money(size: 10.5, color: AppColors.textMuted),
+            ),
+          ),
+          SizedBox(
+            width: 34,
+            child: Text(
+              '${(share * 100).toStringAsFixed(0)}%',
+              textAlign: TextAlign.right,
+              style: AppText.money(
+                size: 10.5,
+                color:
+                    share >= 1 ? const Color(0xFF3FAE6B) : AppColors.textMuted,
+              ),
+            ),
+          ),
+          if (streak > 1) ...[
+            const SizedBox(width: 8),
+            Icon(
+              Icons.bolt,
+              size: 11,
+              color: AppColors.accent.withValues(alpha: 0.8),
+            ),
+            Text(
+              '$streak',
+              style: AppText.money(
+                size: 10.5,
+                weight: FontWeight.w600,
+                color: AppColors.accent,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -341,11 +544,13 @@ class _GroupHeader extends StatelessWidget {
 class _NameCell extends StatefulWidget {
   const _NameCell({
     required this.habit,
+    required this.highlighted,
     required this.onEdit,
     required this.onDelete,
   });
 
   final Habit habit;
+  final bool highlighted;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -358,8 +563,6 @@ class _NameCellState extends State<_NameCell> {
 
   @override
   Widget build(BuildContext context) {
-    final habit = widget.habit;
-
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -372,36 +575,21 @@ class _NameCellState extends State<_NameCell> {
             children: [
               Expanded(
                 child: Text(
-                  habit.name,
+                  widget.habit.name,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: _hover
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
+                    fontWeight: widget.highlighted
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                    color: widget.highlighted
+                        ? AppColors.accent
+                        : (_hover
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary),
                   ),
                 ),
               ),
-              if (habit.frequency != HabitFrequency.daily) ...[
-                const SizedBox(width: 7),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentSoft,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                  ),
-                  child: Text(
-                    habit.frequency == HabitFrequency.weekly ? 'sem' : 'mês',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ),
-              ],
               SizedBox(
                 width: 28,
                 child: _hover
@@ -430,32 +618,28 @@ class _NameCellState extends State<_NameCell> {
 class _HabitRow extends StatelessWidget {
   const _HabitRow({
     required this.habit,
+    required this.row,
     required this.log,
-    required this.monthKey,
     required this.daysInMonth,
     required this.cutoff,
     required this.today,
+    required this.cursorDay,
+    required this.cursorRow,
+    required this.onCellTap,
   });
 
   final Habit habit;
+  final int row;
   final HabitLog log;
-  final String monthKey;
   final int daysInMonth;
   final int cutoff;
   final int? today;
+  final int? cursorDay;
+  final int cursorRow;
+  final void Function(int row, int day) onCellTap;
 
   @override
   Widget build(BuildContext context) {
-    final done = log.doneCount(habit.id, daysInMonth);
-    final streak = log.streak(habit.id, cutoff);
-
-    final expected = switch (habit.frequency) {
-      HabitFrequency.daily => daysInMonth,
-      HabitFrequency.weekly => (daysInMonth / 7).ceil(),
-      HabitFrequency.monthly => 1,
-    };
-    final share = expected == 0 ? 0.0 : (done / expected).clamp(0.0, 1.0);
-
     return SizedBox(
       height: _rowHeight,
       child: Row(
@@ -464,62 +648,14 @@ class _HabitRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: _cellGap),
               child: _Cell(
-                done: log.isDone(habit.id, day),
+                mark: log.markOf(habit.id, day),
                 isToday: day == today,
-                onTap: () => HabitService.toggleMark(
-                  monthKey: monthKey,
-                  habitId: habit.id,
-                  day: day,
-                  done: !log.isDone(habit.id, day),
-                ),
+                isCursor: day == cursorDay && row == cursorRow,
+                inCursorColumn: day == cursorDay,
+                onTap: () => onCellTap(row, day),
               ),
             ),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 96,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '$done',
-                  style: AppText.money(
-                    size: 12,
-                    weight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  '/$expected',
-                  style: AppText.money(size: 10.5, color: AppColors.textMuted),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 34,
-                  child: Text(
-                    '${(share * 100).toStringAsFixed(0)}%',
-                    textAlign: TextAlign.right,
-                    style: AppText.money(
-                      size: 10.5,
-                      color: share >= 1
-                          ? AppColors.income
-                          : AppColors.textMuted,
-                    ),
-                  ),
-                ),
-                if (streak > 1) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    '$streak',
-                    style: AppText.money(
-                      size: 10.5,
-                      weight: FontWeight.w600,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+
         ],
       ),
     );
@@ -528,13 +664,17 @@ class _HabitRow extends StatelessWidget {
 
 class _Cell extends StatefulWidget {
   const _Cell({
-    required this.done,
+    required this.mark,
     required this.isToday,
+    required this.isCursor,
+    required this.inCursorColumn,
     required this.onTap,
   });
 
-  final bool done;
+  final HabitMark mark;
   final bool isToday;
+  final bool isCursor;
+  final bool inCursorColumn;
   final VoidCallback onTap;
 
   @override
@@ -546,6 +686,15 @@ class _CellState extends State<_Cell> {
 
   @override
   Widget build(BuildContext context) {
+    final fill = switch (widget.mark) {
+      HabitMark.done => const Color(0xFF3FAE6B),
+      HabitMark.missed => const Color(0xFFE04848),
+      HabitMark.skipped => AppColors.accent.withValues(alpha: 0.55),
+      HabitMark.none => _hover ? AppColors.surfaceRaised : AppColors.bg,
+    };
+
+    final hasMark = widget.mark != HabitMark.none;
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -557,17 +706,17 @@ class _CellState extends State<_Cell> {
           width: _cellSize,
           height: _cellSize,
           decoration: BoxDecoration(
-            color: widget.done
-                ? AppColors.accent
-                : (_hover ? AppColors.surfaceRaised : AppColors.bg),
+            color: fill,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: widget.isToday
-                  ? AppColors.accent.withValues(alpha: 0.75)
-                  : (widget.done ? Colors.transparent : AppColors.border),
-              width: widget.isToday
-                  ? AppBorders.selected
-                  : AppBorders.normal,
+              color: widget.isCursor
+                  ? AppColors.accentHover
+                  : (widget.inCursorColumn
+                      ? AppColors.accent.withValues(alpha: 0.35)
+                      : (widget.isToday
+                          ? AppColors.accent.withValues(alpha: 0.6)
+                          : (hasMark ? Colors.transparent : AppColors.border))),
+              width: widget.isCursor ? 2 : AppBorders.normal,
             ),
           ),
         ),

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/habit.dart';
 import 'auth_service.dart';
+import '../models/habit.dart';
 
 class HabitService {
   HabitService._();
@@ -47,15 +48,15 @@ class HabitService {
     await _habits.doc(id).delete();
   }
 
-  static Future<void> toggleMark({
+  static Future<void> setMark({
     required String monthKey,
     required String habitId,
     required int day,
-    required bool done,
+    required HabitMark mark,
   }) async {
     await _logs.doc(monthKey).set(
       {
-        'marks': {'$habitId:$day': done},
+        'marks': {'$habitId:$day': mark.name},
       },
       SetOptions(merge: true),
     );

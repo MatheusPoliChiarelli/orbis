@@ -7,6 +7,7 @@ import '../utils/formatters.dart';
 import '../widgets/app_card.dart';
 import '../widgets/bar_chart_card.dart';
 import '../widgets/fixed_cost_dialog.dart';
+import 'package:flutter/services.dart';
 
 class FixedCostsScreen extends StatefulWidget {
   const FixedCostsScreen({super.key});
@@ -18,6 +19,46 @@ class FixedCostsScreen extends StatefulWidget {
 class _FixedCostsScreenState extends State<FixedCostsScreen> {
   int _year = DateTime.now().year;
   int _month = DateTime.now().month;
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKey);
+    super.dispose();
+  }
+
+  bool _handleKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (!mounted) return false;
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
+
+    final focused = FocusManager.instance.primaryFocus?.context?.widget;
+    if (focused is EditableText) return false;
+
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.add ||
+        key == LogicalKeyboardKey.numpadAdd ||
+        key == LogicalKeyboardKey.equal) {
+      showFixedCostDialog(context: context, year: _year);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      setState(() => _year++);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      setState(() => _year--);
+      return true;
+    }
+
+    return false;
+  }
 
 
   Future<void> _confirmDelete(FixedCost item) async {

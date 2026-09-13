@@ -35,6 +35,22 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null) {
+      throw FirebaseAuthException(code: 'user-not-found');
+    }
+
+    await user.reauthenticateWithCredential(
+      EmailAuthProvider.credential(email: email, password: currentPassword),
+    );
+    await user.updatePassword(newPassword);
+  }
+
   static Future<void> signOut() async {
     await _auth.signOut();
   }
@@ -60,6 +76,8 @@ class AuthService {
         return 'Muitas tentativas. Aguarde um momento';
       case 'network-request-failed':
         return 'Sem conexão com a internet';
+      case 'requires-recent-login':
+        return 'Faça login novamente para alterar a senha';
       default:
         return 'Não foi possível concluir. Tente novamente';
     }

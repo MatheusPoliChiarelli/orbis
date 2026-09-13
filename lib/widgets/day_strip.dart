@@ -104,7 +104,11 @@ class _DayCellState extends State<_DayCell> {
             border: Border.all(
               color: selected
                   ? AppColors.borderAccent
-                  : (widget.past ? AppColors.border : Colors.transparent),
+                  : (widget.today
+                      ? AppColors.accent
+                      : (widget.past
+                          ? AppColors.border
+                          : Colors.transparent)),
               width: selected ? AppBorders.selected : AppBorders.normal,
             ),
           ),
@@ -126,15 +130,6 @@ class _DayCellState extends State<_DayCell> {
                   size: 15,
                   color: numberColor,
                   weight: selected ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: widget.today ? AppColors.accent : Colors.transparent,
-                  shape: BoxShape.circle,
                 ),
               ),
             ],

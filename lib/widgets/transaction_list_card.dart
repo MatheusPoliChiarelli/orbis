@@ -5,6 +5,7 @@ import '../models/transaction.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'app_card.dart';
+import 'bank_logo.dart';
 
 enum TxFilter { all, income, expense }
 
@@ -160,9 +161,11 @@ class AccountBadge extends StatelessWidget {
     final account = accountById(accountId);
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: dense ? 7 : 9,
-        vertical: dense ? 2.5 : 4,
+      padding: EdgeInsets.fromLTRB(
+        dense ? 3 : 4,
+        dense ? 2 : 3,
+        dense ? 8 : 10,
+        dense ? 2 : 3,
       ),
       decoration: BoxDecoration(
         color: account.color.withValues(alpha: 0.13),
@@ -175,14 +178,7 @@ class AccountBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(
-              color: account.color,
-              shape: BoxShape.circle,
-            ),
-          ),
+          BankLogo(accountId: accountId, size: dense ? 13 : 16),
           const SizedBox(width: 6),
           Text(
             account.name,

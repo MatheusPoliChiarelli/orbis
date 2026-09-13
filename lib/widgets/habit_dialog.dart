@@ -7,20 +7,18 @@ import '../theme/app_theme.dart';
 Future<void> showHabitDialog({
   required BuildContext context,
   Habit? existing,
-  List<String> groups = const [],
 }) {
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.62),
-    builder: (context) => HabitDialog(existing: existing, groups: groups),
+    builder: (context) => HabitDialog(existing: existing),
   );
 }
 
 class HabitDialog extends StatefulWidget {
-  const HabitDialog({super.key, this.existing, this.groups = const []});
+  const HabitDialog({super.key, this.existing});
 
   final Habit? existing;
-  final List<String> groups;
 
   @override
   State<HabitDialog> createState() => _HabitDialogState();
@@ -28,10 +26,8 @@ class HabitDialog extends StatefulWidget {
 
 class _HabitDialogState extends State<HabitDialog> {
   final _nameController = TextEditingController();
-  final _groupController = TextEditingController();
   final _nameFocus = FocusNode();
 
-  HabitFrequency _frequency = HabitFrequency.daily;
   bool _saving = false;
 
   @override
@@ -40,8 +36,6 @@ class _HabitDialogState extends State<HabitDialog> {
     final existing = widget.existing;
     if (existing != null) {
       _nameController.text = existing.name;
-      _groupController.text = existing.group ?? '';
-      _frequency = existing.frequency;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _nameFocus.requestFocus();
@@ -51,7 +45,6 @@ class _HabitDialogState extends State<HabitDialog> {
   @override
   void dispose() {
     _nameController.dispose();
-    _groupController.dispose();
     _nameFocus.dispose();
     super.dispose();
   }
@@ -67,14 +60,12 @@ class _HabitDialogState extends State<HabitDialog> {
 
     setState(() => _saving = true);
 
-    final group = _groupController.text.trim();
-
     final habit = Habit(
       id: widget.existing?.id ?? '',
       name: name,
-      frequency: _frequency,
+      frequency: HabitFrequency.daily,
       active: widget.existing?.active ?? true,
-      group: group.isEmpty ? null : group,
+      group: null,
       order: widget.existing?.order ?? DateTime.now().millisecondsSinceEpoch,
     );
 
@@ -96,7 +87,7 @@ class _HabitDialogState extends State<HabitDialog> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(28),
       child: Container(
-        width: 460,
+        width: 420,
         padding: const EdgeInsets.fromLTRB(26, 22, 26, 22),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -119,7 +110,15 @@ class _HabitDialogState extends State<HabitDialog> {
               ),
             ),
             const SizedBox(height: 20),
-            const _Label('Nome'),
+            const Text(
+              'Nome',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMuted,
+                letterSpacing: 0.3,
+              ),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
@@ -129,55 +128,41 @@ class _HabitDialogState extends State<HabitDialog> {
                 fontSize: 14,
                 color: AppColors.textPrimary,
               ),
-              decoration: _decoration('Academia'),
-            ),
-            const SizedBox(height: 16),
-            const _Label('Grupo'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _groupController,
-              onSubmitted: (_) => _save(),
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-              ),
-              decoration: _decoration('Opcional, por exemplo Concurso'),
-            ),
-            if (widget.groups.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: [
-                  for (final group in widget.groups)
-                    _GroupChip(
-                      label: group,
-                      onTap: () => setState(
-                        () => _groupController.text = group,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
-            const _Label('Frequência'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                for (final frequency in HabitFrequency.values) ...[
-                  _FrequencyChip(
-                    label: switch (frequency) {
-                      HabitFrequency.daily => 'Diário',
-                      HabitFrequency.weekly => 'Semanal',
-                      HabitFrequency.monthly => 'Mensal',
-                    },
-                    selected: _frequency == frequency,
-                    onTap: () => setState(() => _frequency = frequency),
+              decoration: InputDecoration(
+                hintText: 'Academia',
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textMuted,
+                ),
+                filled: true,
+                fillColor: AppColors.bg,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 13,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.field),
+                  borderSide: const BorderSide(
+                    color: AppColors.border,
+                    width: AppBorders.normal,
                   ),
-                  if (frequency != HabitFrequency.values.last)
-                    const SizedBox(width: 9),
-                ],
-              ],
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.field),
+                  borderSide: const BorderSide(
+                    color: AppColors.border,
+                    width: AppBorders.normal,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.field),
+                  borderSide: const BorderSide(
+                    color: AppColors.accent,
+                    width: AppBorders.selected,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -198,134 +183,6 @@ class _HabitDialogState extends State<HabitDialog> {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _decoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(fontSize: 14, color: AppColors.textMuted),
-      filled: true,
-      fillColor: AppColors.bg,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.field),
-        borderSide: const BorderSide(
-          color: AppColors.border,
-          width: AppBorders.normal,
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.field),
-        borderSide: const BorderSide(
-          color: AppColors.border,
-          width: AppBorders.normal,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.field),
-        borderSide: const BorderSide(
-          color: AppColors.accent,
-          width: AppBorders.selected,
-        ),
-      ),
-    );
-  }
-}
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 11.5,
-        fontWeight: FontWeight.w500,
-        color: AppColors.textMuted,
-        letterSpacing: 0.3,
-      ),
-    );
-  }
-}
-
-class _GroupChip extends StatelessWidget {
-  const _GroupChip({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.bg,
-            borderRadius: BorderRadius.circular(AppRadius.chip),
-            border: Border.all(
-              color: AppColors.border,
-              width: AppBorders.normal,
-            ),
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11.5,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FrequencyChip extends StatelessWidget {
-  const _FrequencyChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 130),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.accentSoft : AppColors.bg,
-            borderRadius: BorderRadius.circular(AppRadius.chip),
-            border: Border.all(
-              color: selected ? AppColors.borderAccent : AppColors.border,
-              width: selected ? AppBorders.selected : AppBorders.normal,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: selected ? AppColors.accent : AppColors.textSecondary,
-            ),
-          ),
         ),
       ),
     );

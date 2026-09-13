@@ -43,7 +43,7 @@ const navItems = <NavItem>[
   ),
   NavItem(
     id: 'habitos',
-    label: 'Hábitos',
+    label: 'Habit Tracker',
     icon: Icons.grid_on_outlined,
     section: NavSection.habitos,
   ),
@@ -57,12 +57,12 @@ const navItems = <NavItem>[
 
 const sectionLabels = <NavSection, String>{
   NavSection.financas: 'Finanças',
-  NavSection.habitos: 'Hábitos',
+  NavSection.habitos: 'Habit Tracker',
   NavSection.rotina: 'Rotina',
 };
 
 const sectionOrder = <NavSection>[
   NavSection.financas,
-  NavSection.habitos,
   NavSection.rotina,
+  NavSection.habitos,
 ];

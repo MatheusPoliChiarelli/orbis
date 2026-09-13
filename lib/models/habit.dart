@@ -75,13 +75,26 @@ class Habit {
 }
 
 /// Marcações de um mês inteiro, no formato "habitId:dia".
+enum HabitMark { none, done, missed, skipped }
+
+/// Marcações de um mês inteiro, no formato "habitId:dia".
 class HabitLog {
   const HabitLog({required this.monthKey, required this.marks});
 
   final String monthKey;
-  final Map<String, bool> marks;
+  final Map<String, String> marks;
 
-  bool isDone(String habitId, int day) => marks['$habitId:$day'] == true;
+  HabitMark markOf(String habitId, int day) {
+    return switch (marks['$habitId:$day']) {
+      'done' => HabitMark.done,
+      'missed' => HabitMark.missed,
+      'skipped' => HabitMark.skipped,
+      _ => HabitMark.none,
+    };
+  }
+
+  bool isDone(String habitId, int day) =>
+      markOf(habitId, day) == HabitMark.done;
 
   factory HabitLog.empty(String key) {
     return HabitLog(monthKey: key, marks: const {});
@@ -95,7 +108,10 @@ class HabitLog {
     return HabitLog(
       monthKey: doc.id,
       marks: raw.map(
-        (key, value) => MapEntry(key.toString(), value == true),
+        (key, value) => MapEntry(
+          key.toString(),
+          value == true ? 'done' : value.toString(),
+        ),
       ),
     );
   }
@@ -109,11 +125,23 @@ class HabitLog {
     return total;
   }
 
+  /// Quantos dias foram cobrados, ou seja, não marcados como dispensados.
+  int expectedCount(String habitId, int daysInMonth) {
+    var total = 0;
+    for (var day = 1; day <= daysInMonth; day++) {
+      if (markOf(habitId, day) != HabitMark.skipped) total++;
+    }
+    return total;
+  }
+
   /// Sequência atual, contada de trás para frente a partir do dia de corte.
+  /// Dias dispensados não quebram a sequência.
   int streak(String habitId, int upToDay) {
     var count = 0;
     for (var day = upToDay; day >= 1; day--) {
-      if (!isDone(habitId, day)) break;
+      final mark = markOf(habitId, day);
+      if (mark == HabitMark.skipped) continue;
+      if (mark != HabitMark.done) break;
       count++;
     }
     return count;

@@ -29,16 +29,14 @@ class AccountGlow extends StatelessWidget {
         final base = color.withValues(alpha: 1);
 
         return Stack(
+          fit: StackFit.expand,
           children: [
-            Positioned.fill(child: inner!),
+            inner!,
             Positioned.fill(
               child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: base.withValues(alpha: 0.55 * intensity),
-                      width: AppBorders.selected,
-                    ),
+                child: CustomPaint(
+                  painter: _BorderPainter(
+                    color: base.withValues(alpha: 0.55 * intensity),
                   ),
                 ),
               ),
@@ -48,5 +46,27 @@ class AccountGlow extends StatelessWidget {
       },
       child: child,
     );
+  }
+}
+
+class _BorderPainter extends CustomPainter {
+  _BorderPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Rect.fromLTWH(0.5, 0.5, size.width - 1, size.height - 1),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BorderPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }

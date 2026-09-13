@@ -41,11 +41,13 @@ class _RoutineBlockDialogState extends State<RoutineBlockDialog> {
   final _labelFocus = FocusNode();
 
   final Set<int> _weekdays = {};
+  late DayType _dayType;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
+    _dayType = widget.existing?.dayType ?? widget.dayType;
     final existing = widget.existing;
     if (existing != null) {
       _labelController.text = existing.label;
@@ -93,7 +95,7 @@ class _RoutineBlockDialogState extends State<RoutineBlockDialog> {
 
     final block = RoutineBlock(
       id: widget.existing?.id ?? '',
-      dayType: widget.dayType,
+      dayType: _dayType,
       startMinutes: start,
       endMinutes: end,
       label: label,
@@ -133,27 +135,34 @@ class _RoutineBlockDialogState extends State<RoutineBlockDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Text(
-                  widget.existing == null ? 'Novo bloco' : 'Editar bloco',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  widget.dayType.label,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
+            Text(
+              widget.existing == null ? 'Novo bloco' : 'Editar bloco',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 20),
+            const _Label('Tipo de dia'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final type in DayType.values)
+                  _WeekdayChip(
+                    label: type.label,
+                    selected: _dayType == type,
+                    onTap: () => setState(() {
+                      _dayType = type;
+                      if (type != DayType.weekday) _weekdays.clear();
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
             const _Label('Atividade'),
             const SizedBox(height: 8),
             TextField(
@@ -211,7 +220,7 @@ class _RoutineBlockDialogState extends State<RoutineBlockDialog> {
                 ),
               ],
             ),
-            if (widget.dayType == DayType.weekday) ...[
+            if (_dayType == DayType.weekday) ...[
               const SizedBox(height: 16),
               const _Label('Dias da semana'),
               const SizedBox(height: 4),

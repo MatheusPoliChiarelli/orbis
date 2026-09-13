@@ -39,16 +39,10 @@ class _ShellScreenState extends State<ShellScreen> {
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,
               transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.015),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                );
+                return FadeTransition(opacity: animation, child: child);
+              },
+              layoutBuilder: (currentChild, previousChildren) {
+                return currentChild ?? const SizedBox.shrink();
               },
               child: switch (item.id) {
                 'variaveis' => const VariableExpensesScreen(

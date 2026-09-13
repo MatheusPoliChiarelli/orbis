@@ -82,15 +82,9 @@ List<RoutineBlock> buildDefaultRoutine() {
   add(DayType.weekday, _weekday);
   add(DayType.saturday, _saturday);
 
-  add(DayType.sundayN, [
+  add(DayType.sunday, [
     ..._sundayCommon,
-    const _Seed(630, 720, 'Finclass'),
-    ..._sundayAfter,
-  ]);
-
-  add(DayType.sundayD, [
-    ..._sundayCommon,
-    const _Seed(630, 720, 'Revisão mensal'),
+    const _Seed(630, 720, 'Finclass ou revisão mensal'),
     ..._sundayAfter,
   ]);
 

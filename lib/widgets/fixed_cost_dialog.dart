@@ -234,8 +234,19 @@ class _FixedCostDialogState extends State<FixedCostDialog> {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(fontSize: 14, color: AppColors.textMuted),
-      prefixText: prefix,
-      prefixStyle: AppText.money(size: 15, color: AppColors.textMuted),
+      prefixIcon: prefix == null
+          ? null
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 6, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                widthFactor: 1,
+                child: Text(
+                  prefix.trim(),
+                  style: AppText.money(size: 15, color: AppColors.textMuted),
+                ),
+              ),
+            ),
       filled: true,
       fillColor: AppColors.bg,
       isDense: true,

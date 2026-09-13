@@ -1,16 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum DayType { weekday, saturday, sundayN, sundayD }
+enum DayType { weekday, saturday, sunday }
 
 extension DayTypeLabel on DayType {
   String get label {
     return switch (this) {
       DayType.weekday => 'Dias úteis',
       DayType.saturday => 'Sábado',
-      DayType.sundayN => 'Domingo N',
-      DayType.sundayD => 'Domingo D',
+      DayType.sunday => 'Domingo',
     };
   }
+}
+
+DayType _parseDayType(Object? raw) {
+  return switch (raw) {
+    'saturday' => DayType.saturday,
+    'sunday' || 'sundayN' || 'sundayD' => DayType.sunday,
+    _ => DayType.weekday,
+  };
 }
 
 class RoutineBlock {
@@ -38,8 +45,8 @@ class RoutineBlock {
 
   final int order;
 
-  String get startLabel => _format(startMinutes);
-  String get endLabel => _format(endMinutes);
+  String get startLabel => format(startMinutes);
+  String get endLabel => format(endMinutes);
   String get rangeLabel => '$startLabel às $endLabel';
 
   /// Duração em minutos, tratando blocos que cruzam a meia-noite.
@@ -61,7 +68,7 @@ class RoutineBlock {
     return minute >= startMinutes || minute < endMinutes;
   }
 
-  static String _format(int minutes) {
+  static String format(int minutes) {
     final hour = (minutes ~/ 60) % 24;
     final minute = minutes % 60;
     return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
@@ -71,10 +78,7 @@ class RoutineBlock {
     final data = doc.data() ?? <String, dynamic>{};
     return RoutineBlock(
       id: doc.id,
-      dayType: DayType.values.firstWhere(
-        (d) => d.name == data['dayType'],
-        orElse: () => DayType.weekday,
-      ),
+      dayType: _parseDayType(data['dayType']),
       startMinutes: (data['startMinutes'] as num?)?.toInt() ?? 0,
       endMinutes: (data['endMinutes'] as num?)?.toInt() ?? 0,
       label: data['label'] as String? ?? '',

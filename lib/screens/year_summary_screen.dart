@@ -15,6 +15,15 @@ import '../widgets/bar_chart_card.dart';
 import '../widgets/category_ranking_card.dart';
 import '../widgets/cumulative_chart_card.dart';
 import '../widgets/transaction_dialog.dart';
+import 'package:flutter/services.dart';
+
+
+
+final _accountKeys = <LogicalKeyboardKey, String>{
+  LogicalKeyboardKey.keyG: kGeneralAccountId,
+  LogicalKeyboardKey.keyN: 'nubank',
+  LogicalKeyboardKey.keyB: 'bradesco',
+};
 
 class YearSummaryScreen extends StatefulWidget {
   const YearSummaryScreen({super.key});
@@ -26,6 +35,44 @@ class YearSummaryScreen extends StatefulWidget {
 class _YearSummaryScreenState extends State<YearSummaryScreen> {
   int _year = DateTime.now().year;
   String _accountId = kGeneralAccountId;
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKey);
+    super.dispose();
+  }
+
+  bool _handleKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (!mounted) return false;
+    if (ModalRoute.of(context)?.isCurrent != true) return false;
+
+    final focused = FocusManager.instance.primaryFocus?.context?.widget;
+    if (focused is EditableText) return false;
+
+    final accountId = _accountKeys[event.logicalKey];
+    if (accountId != null) {
+      setState(() => _accountId = accountId);
+      return true;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      _changeYear(1);
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      _changeYear(-1);
+      return true;
+    }
+
+    return false;
+  }
 
   void _changeYear(int delta) {
     setState(() => _year += delta);
