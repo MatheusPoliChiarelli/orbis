@@ -7,6 +7,7 @@ class AppCard extends StatelessWidget {
     super.key,
     required this.child,
     this.title,
+    this.subtitle,
     this.trailing,
     this.padding = const EdgeInsets.all(18),
     this.raised = false,
@@ -14,6 +15,7 @@ class AppCard extends StatelessWidget {
 
   final Widget child;
   final String? title;
+  final String? subtitle;
   final Widget? trailing;
   final EdgeInsets padding;
   final bool raised;
@@ -37,22 +39,38 @@ class AppCard extends StatelessWidget {
         children: [
           if (title != null) ...[
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    title!,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.3,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title!,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accent,
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle!,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 if (trailing != null) trailing!,
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
           ],
           child,
         ],

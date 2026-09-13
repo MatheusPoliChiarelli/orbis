@@ -4,6 +4,7 @@ import '../data/nav_items.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_sidebar.dart';
 import 'variable_expenses_screen.dart';
+import 'month_summary_screen.dart';
 
 class ShellScreen extends StatefulWidget {
   const ShellScreen({super.key});
@@ -14,6 +15,9 @@ class ShellScreen extends StatefulWidget {
 
 class _ShellScreenState extends State<ShellScreen> {
   String _selectedId = 'variaveis';
+  
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +49,9 @@ class _ShellScreenState extends State<ShellScreen> {
               child: switch (item.id) {
                 'variaveis' => const VariableExpensesScreen(
                     key: ValueKey('variaveis'),
+                  ),
+                'resumo-mes' => const MonthSummaryScreen(
+                    key: ValueKey('resumo-mes'),
                   ),
                 _ => _Placeholder(key: ValueKey(item.id), item: item),
               },

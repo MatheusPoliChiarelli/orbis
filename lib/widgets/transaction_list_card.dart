@@ -15,12 +15,17 @@ class TransactionListCard extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     this.showAccountBadge = false,
+    this.showDate = false,
+    this.bare = false,
   });
 
   final List<Tx> transactions;
   final ValueChanged<Tx> onEdit;
   final ValueChanged<Tx> onDelete;
   final bool showAccountBadge;
+  final bool showDate;
+  final bool bare;
+
 
   @override
   State<TransactionListCard> createState() => _TransactionListCardState();
@@ -44,44 +49,61 @@ class _TransactionListCardState extends State<TransactionListCard> {
         return bTime.compareTo(aTime);
       });
 
+    final filters = Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        for (final filter in TxFilter.values) ...[
+          _FilterChip(
+            label: switch (filter) {
+              TxFilter.all => 'Todas',
+              TxFilter.income => 'Entradas',
+              TxFilter.expense => 'Saídas',
+            },
+            selected: _filter == filter,
+            onTap: () => setState(() => _filter = filter),
+          ),
+          if (filter != TxFilter.values.last) const SizedBox(width: 6),
+        ],
+      ],
+    );
+
+    final content = list.isEmpty
+        ? const EmptyHint(message: 'Nenhum lançamento neste período')
+        : Column(
+            children: [
+              for (final tx in list) ...[
+                _TxRow(
+                  tx: tx,
+                  showAccountBadge: widget.showAccountBadge,
+                  showDate: widget.showDate,
+                  onEdit: () => widget.onEdit(tx),
+                  onDelete: () => widget.onDelete(tx),
+                ),
+                if (tx != list.last)
+                  const Divider(
+                    height: 18,
+                    thickness: AppBorders.normal,
+                    color: AppColors.border,
+                  ),
+              ],
+            ],
+          );
+
+    if (widget.bare) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          filters,
+          const SizedBox(height: 16),
+          content,
+        ],
+      );
+    }
+
     return AppCard(
       title: 'Lançamentos do dia',
-      trailing: Row(
-        children: [
-          for (final filter in TxFilter.values) ...[
-            _FilterChip(
-              label: switch (filter) {
-                TxFilter.all => 'Todas',
-                TxFilter.income => 'Entradas',
-                TxFilter.expense => 'Saídas',
-              },
-              selected: _filter == filter,
-              onTap: () => setState(() => _filter = filter),
-            ),
-            if (filter != TxFilter.values.last) const SizedBox(width: 6),
-          ],
-        ],
-      ),
-      child: list.isEmpty
-          ? const EmptyHint(message: 'Nenhum lançamento neste dia')
-          : Column(
-              children: [
-                for (final tx in list) ...[
-                  _TxRow(
-                    tx: tx,
-                    showAccountBadge: widget.showAccountBadge,
-                    onEdit: () => widget.onEdit(tx),
-                    onDelete: () => widget.onDelete(tx),
-                  ),
-                  if (tx != list.last)
-                    const Divider(
-                      height: 18,
-                      thickness: AppBorders.normal,
-                      color: AppColors.border,
-                    ),
-                ],
-              ],
-            ),
+      trailing: filters,
+      child: content,
     );
   }
 }
@@ -180,12 +202,14 @@ class _TxRow extends StatefulWidget {
   const _TxRow({
     required this.tx,
     required this.showAccountBadge,
+    required this.showDate,
     required this.onEdit,
     required this.onDelete,
   });
 
   final Tx tx;
   final bool showAccountBadge;
+  final bool showDate;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -248,7 +272,9 @@ class _TxRowState extends State<_TxRow> {
                   Row(
                     children: [
                       Text(
-                        tx.categoryName,
+                        widget.showDate
+                            ? '${tx.date.day.toString().padLeft(2, '0')} ${monthLabel(tx.date).substring(0, 3).toLowerCase()}'
+                            : tx.categoryName,
                         style: const TextStyle(
                           fontSize: 11.5,
                           color: AppColors.textMuted,
