@@ -7,6 +7,7 @@ import 'variable_expenses_screen.dart';
 import 'month_summary_screen.dart';
 import 'year_summary_screen.dart';
 import 'fixed_costs_screen.dart';
+import 'habits_screen.dart';
 
 class ShellScreen extends StatefulWidget {
   const ShellScreen({super.key});
@@ -60,6 +61,9 @@ class _ShellScreenState extends State<ShellScreen> {
                   ),
                 'fixos' => const FixedCostsScreen(
                     key: ValueKey('fixos'),
+                  ),
+                'habitos' => const HabitsScreen(
+                    key: ValueKey('habitos'),
                   ),
                 _ => _Placeholder(key: ValueKey(item.id), item: item),
               },

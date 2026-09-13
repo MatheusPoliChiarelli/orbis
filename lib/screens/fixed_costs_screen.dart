@@ -19,7 +19,6 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
   int _year = DateTime.now().year;
   int _month = DateTime.now().month;
 
-  String get _monthKey => '$_year-${_month.toString().padLeft(2, '0')}';
 
   Future<void> _confirmDelete(FixedCost item) async {
     final confirmed = await showDialog<bool>(
