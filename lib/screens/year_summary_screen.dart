@@ -2,33 +2,33 @@ import 'package:flutter/material.dart';
 
 import '../data/accounts.dart';
 import '../models/month_budget.dart';
-import '../models/month_stats.dart';
 import '../models/transaction.dart';
+import '../models/year_stats.dart';
 import '../services/finance_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/account_glow.dart';
 import '../widgets/account_selector.dart';
-import '../widgets/app_card.dart';
-import '../widgets/category_ranking_card.dart';
 import '../widgets/all_transactions_card.dart';
+import '../widgets/app_card.dart';
 import '../widgets/bar_chart_card.dart';
+import '../widgets/category_ranking_card.dart';
 import '../widgets/cumulative_chart_card.dart';
 import '../widgets/transaction_dialog.dart';
 
-class MonthSummaryScreen extends StatefulWidget {
-  const MonthSummaryScreen({super.key});
+class YearSummaryScreen extends StatefulWidget {
+  const YearSummaryScreen({super.key});
 
   @override
-  State<MonthSummaryScreen> createState() => _MonthSummaryScreenState();
+  State<YearSummaryScreen> createState() => _YearSummaryScreenState();
 }
 
-class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
-  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
+class _YearSummaryScreenState extends State<YearSummaryScreen> {
+  int _year = DateTime.now().year;
   String _accountId = kGeneralAccountId;
 
-  void _changeMonth(int delta) {
-    setState(() => _month = DateTime(_month.year, _month.month + delta));
+  void _changeYear(int delta) {
+    setState(() => _year += delta);
   }
 
   List<Tx> _filtered(List<Tx> all) {
@@ -88,27 +88,25 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final monthLabels = [
+      for (final name in monthNames) name.substring(0, 3),
+    ];
+
     return StreamBuilder<List<Tx>>(
-      stream: FinanceService.watchMonthTransactions(_month),
+      stream: FinanceService.watchYearTransactions(_year),
       builder: (context, txSnap) {
-        return StreamBuilder<MonthBudget>(
-          stream: FinanceService.watchMonthBudget(_month),
+        return StreamBuilder<List<MonthBudget>>(
+          stream: FinanceService.watchYearBudgets(_year),
           builder: (context, budgetSnap) {
             final transactions = txSnap.data ?? const <Tx>[];
-            final budget =
-                budgetSnap.data ?? MonthBudget.empty(monthKey(_month));
+            final budgets = budgetSnap.data ?? const <MonthBudget>[];
 
-            final stats = MonthStats.from(
-              month: _month,
+            final stats = YearStats.from(
               transactions: transactions,
-              budget: budget,
+              budgets: budgets,
               accountId: _accountId,
+              year: _year,
             );
-
-            final periodLabel = '${monthLabel(_month)} de ${_month.year}';
-            final dayLabels = [
-              for (var i = 1; i <= stats.dailyIncome.length; i++) '$i',
-            ];
 
             return AccountGlow(
               accountId: _accountId,
@@ -122,23 +120,23 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                       children: [
                         Row(
                           children: [
-                            _MonthArrow(
+                            _YearArrow(
                               icon: Icons.chevron_left,
-                              onTap: () => _changeMonth(-1),
+                              onTap: () => _changeYear(-1),
                             ),
                             const SizedBox(width: 4),
                             SizedBox(
-                              width: 210,
+                              width: 150,
                               child: Text(
-                                '${monthLabel(_month)} ${_month.year}',
+                                '$_year',
                                 textAlign: TextAlign.center,
                                 style: AppText.serif(size: 26),
                               ),
                             ),
                             const SizedBox(width: 4),
-                            _MonthArrow(
+                            _YearArrow(
                               icon: Icons.chevron_right,
-                              onTap: () => _changeMonth(1),
+                              onTap: () => _changeYear(1),
                             ),
                           ],
                         ),
@@ -189,14 +187,14 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                               categoryColors: stats.categoryColors,
                               categoryIds: stats.categoryIds,
                               total: stats.expense,
-                              subtitle: periodLabel,
+                              subtitle: 'Ano de $_year',
                             ),
                             const SizedBox(height: 14),
                             CumulativeChartCard(
-                              title: 'Patrimônio ao longo do mês',
-                              subtitle: 'Saldo acumulado dia a dia',
+                              title: 'Patrimônio ao longo do ano',
+                              subtitle: 'Saldo acumulado mês a mês',
                               values: stats.cumulative,
-                              labels: dayLabels,
+                              labels: monthLabels,
                             ),
                             const SizedBox(height: 14),
                             IntrinsicHeight(
@@ -205,21 +203,21 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                                 children: [
                                   Expanded(
                                     child: BarChartCard(
-                                      title: 'Entradas por dia',
-                                      subtitle: periodLabel,
-                                      values: stats.dailyIncome,
+                                      title: 'Entradas por mês',
+                                      subtitle: 'Ano de $_year',
+                                      values: stats.monthlyIncome,
                                       color: AppColors.income,
-                                      labels: dayLabels,
+                                      labels: monthLabels,
                                     ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: BarChartCard(
-                                      title: 'Saídas por dia',
-                                      subtitle: periodLabel,
-                                      values: stats.dailyExpense,
+                                      title: 'Saídas por mês',
+                                      subtitle: 'Ano de $_year',
+                                      values: stats.monthlyExpense,
                                       color: AppColors.expense,
-                                      labels: dayLabels,
+                                      labels: monthLabels,
                                     ),
                                   ),
                                 ],
@@ -301,32 +299,32 @@ class _BigMetric extends StatelessWidget {
 class _MetricsRow extends StatelessWidget {
   const _MetricsRow({required this.stats});
 
-  final MonthStats stats;
+  final YearStats stats;
 
   @override
   Widget build(BuildContext context) {
-    final top = stats.topCategory;
+    final topMonth = stats.topExpenseMonth;
 
     return Row(
       children: [
         Expanded(
           child: _SmallMetric(
-            label: 'Média diária de gastos',
-            value: formatMoney(stats.dailyAverage),
+            label: 'Média mensal de gastos',
+            value: formatMoney(stats.monthlyAverage),
           ),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: _SmallMetric(
             label: 'Maior categoria',
-            value: top ?? 'Sem dados',
+            value: stats.topCategory ?? 'Sem dados',
           ),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: _SmallMetric(
-            label: 'Total de lançamentos',
-            value: '${stats.count}',
+            label: 'Mês de maior gasto',
+            value: topMonth == null ? 'Sem dados' : monthNames[topMonth],
           ),
         ),
         const SizedBox(width: 14),
@@ -334,9 +332,8 @@ class _MetricsRow extends StatelessWidget {
           child: _SmallMetric(
             label: 'Balanço',
             value: formatSigned(stats.balance),
-            valueColor: stats.balance < 0
-                ? AppColors.expense
-                : AppColors.income,
+            valueColor:
+                stats.balance < 0 ? AppColors.expense : AppColors.income,
           ),
         ),
       ],
@@ -375,6 +372,7 @@ class _SmallMetric extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             value,
+            overflow: TextOverflow.ellipsis,
             style: AppText.money(
               size: 13.5,
               weight: FontWeight.w600,
@@ -387,17 +385,17 @@ class _SmallMetric extends StatelessWidget {
   }
 }
 
-class _MonthArrow extends StatefulWidget {
-  const _MonthArrow({required this.icon, required this.onTap});
+class _YearArrow extends StatefulWidget {
+  const _YearArrow({required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;
 
   @override
-  State<_MonthArrow> createState() => _MonthArrowState();
+  State<_YearArrow> createState() => _YearArrowState();
 }
 
-class _MonthArrowState extends State<_MonthArrow> {
+class _YearArrowState extends State<_YearArrow> {
   bool _hover = false;
 
   @override

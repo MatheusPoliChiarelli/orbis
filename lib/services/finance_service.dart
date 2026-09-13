@@ -39,6 +39,25 @@ class FinanceService {
         );
   }
 
+  static Stream<List<Tx>> watchYearTransactions(int year) {
+    final start = DateTime(year, 1, 1);
+    final end = DateTime(year + 1, 1, 1);
+
+    return _transactions
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThan: Timestamp.fromDate(end))
+        .snapshots()
+        .map((snap) => snap.docs.map(Tx.fromDoc).toList());
+  }
+
+  static Stream<List<MonthBudget>> watchYearBudgets(int year) {
+    return _budgets
+        .where(FieldPath.documentId, isGreaterThanOrEqualTo: '$year-01')
+        .where(FieldPath.documentId, isLessThanOrEqualTo: '$year-12')
+        .snapshots()
+        .map((snap) => snap.docs.map(MonthBudget.fromDoc).toList());
+  }
+
   static Future<void> addTransaction(Tx tx) async {
     await _transactions.add(tx.toMap());
   }

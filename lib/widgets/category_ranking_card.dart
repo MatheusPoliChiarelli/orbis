@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../data/categories.dart';
-import '../models/month_stats.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'app_card.dart';
@@ -9,19 +8,23 @@ import 'app_card.dart';
 class CategoryRankingCard extends StatelessWidget {
   const CategoryRankingCard({
     super.key,
-    required this.stats,
+    required this.byCategory,
+    required this.categoryColors,
+    required this.categoryIds,
+    required this.total,
     required this.subtitle,
   });
 
-  final MonthStats stats;
+  final Map<String, double> byCategory;
+  final Map<String, int> categoryColors;
+  final Map<String, String> categoryIds;
+  final double total;
   final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    final entries = stats.byCategory.entries.toList()
+    final entries = byCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-
-    final total = stats.expense;
 
     return AppCard(
       title: 'Despesas por categoria',
@@ -35,10 +38,8 @@ class CategoryRankingCard extends StatelessWidget {
                     name: entry.key,
                     value: entry.value,
                     share: total == 0 ? 0 : entry.value / total,
-                    color: Color(
-                      stats.categoryColors[entry.key] ?? 0xFF9AA1A8,
-                    ),
-                    icon: categoryById(stats.categoryIds[entry.key] ?? '')?.icon,
+                    color: Color(categoryColors[entry.key] ?? 0xFF9AA1A8),
+                    icon: categoryById(categoryIds[entry.key] ?? '')?.icon,
                   ),
                   if (entry != entries.last) const SizedBox(height: 15),
                 ],
