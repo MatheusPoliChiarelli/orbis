@@ -19,7 +19,7 @@ class NavItem {
 const navItems = <NavItem>[
   NavItem(
     id: 'variaveis',
-    label: 'Gastos variáveis',
+    label: 'Gastos totais',
     icon: Icons.receipt_long_outlined,
     section: NavSection.financas,
   ),

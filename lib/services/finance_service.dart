@@ -107,6 +107,11 @@ class FinanceService {
         .map((snap) => snap.docs.map(FixedCost.fromDoc).toList());
   }
 
+  static Future<List<FixedCost>> getFixedCosts() async {
+    final snap = await _fixedCosts.get();
+    return snap.docs.map(FixedCost.fromDoc).toList();
+  }
+
   static Future<void> addFixedCost(FixedCost item) async {
     await _fixedCosts.add(item.toMap());
   }
@@ -127,6 +132,22 @@ class FinanceService {
     await batch.commit();
   }
 
+
+  static Stream<Set<String>> watchPaidFixedCosts(DateTime month) {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 1);
+
+    return _transactions
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThan: Timestamp.fromDate(end))
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((doc) => doc.data()['fixedCostId'] as String?)
+              .whereType<String>()
+              .toSet(),
+        );
+  }
 
 
 }

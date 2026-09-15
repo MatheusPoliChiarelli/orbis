@@ -3,13 +3,16 @@ import 'package:flutter/services.dart';
 
 import '../data/accounts.dart';
 import '../data/categories.dart';
+import '../models/fixed_cost.dart';
 import '../models/transaction.dart';
 import '../services/finance_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import 'bank_logo.dart';
 
-enum TxStep { category, amount, description, toAccount }
+enum TxStep { kind, fixedItem, category, amount, description, toAccount }
+
+enum ExpenseKind { fixed, variable }
 
 const _gridColumns = 3;
 
@@ -62,9 +65,16 @@ class _TransactionDialogState extends State<TransactionDialog> {
   String? _toAccountId;
   CategoryInfo? _category;
 
+  ExpenseKind _kind = ExpenseKind.variable;
+  FixedCost? _fixedItem;
+  List<FixedCost> _fixedOptions = const [];
+  bool _loadingFixed = false;
+
   TxStep _step = TxStep.category;
   int _listIndex = 0;
   bool _saving = false;
+
+  bool get _isExpense => _type == TxType.expense;
 
   List<CategoryInfo> get _categories =>
       _type == TxType.income ? incomeCategories : expenseCategories;
@@ -72,6 +82,22 @@ class _TransactionDialogState extends State<TransactionDialog> {
   List<TxStep> get _stepFlow {
     if (_type == TxType.transfer) {
       return const [TxStep.toAccount, TxStep.amount, TxStep.description];
+    }
+    if (_isExpense) {
+      if (_kind == ExpenseKind.fixed) {
+        return const [
+          TxStep.kind,
+          TxStep.fixedItem,
+          TxStep.amount,
+          TxStep.description,
+        ];
+      }
+      return const [
+        TxStep.kind,
+        TxStep.category,
+        TxStep.amount,
+        TxStep.description,
+      ];
     }
     return const [TxStep.category, TxStep.amount, TxStep.description];
   }
@@ -81,6 +107,8 @@ class _TransactionDialogState extends State<TransactionDialog> {
 
   int get _currentListLength {
     return switch (_step) {
+      TxStep.kind => 2,
+      TxStep.fixedItem => _fixedOptions.length,
       TxStep.category => _categories.length,
       TxStep.toAccount => _transferTargets.length,
       TxStep.amount => 0,
@@ -101,17 +129,43 @@ class _TransactionDialogState extends State<TransactionDialog> {
       _category = categoryById(existing.categoryId);
       _amountController.text = formatMoneyPlain(existing.amount);
       _descriptionController.text = existing.description;
+      _kind = existing.isFixed ? ExpenseKind.fixed : ExpenseKind.variable;
       _listIndex = _categories.indexWhere((c) => c.id == existing.categoryId);
       if (_listIndex < 0) _listIndex = 0;
-    } else if (_type != TxType.transfer) {
+    } else if (_type != TxType.transfer && !_isExpense) {
       _category = _categories.first;
       _listIndex = 0;
     }
 
     _step = _stepFlow.first;
 
+    if (_isExpense) _loadFixedOptions();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _keyboardFocus.requestFocus();
+    });
+  }
+
+  Future<void> _loadFixedOptions() async {
+    setState(() => _loadingFixed = true);
+
+    final all = await FinanceService.getFixedCosts();
+    final month = FixedCostMonth.build(
+      monthKey: monthKey(widget.date),
+      all: all,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _fixedOptions = month.parents;
+      _loadingFixed = false;
+      final existing = widget.existing;
+      if (existing?.fixedCostId != null) {
+        final index =
+            _fixedOptions.indexWhere((i) => i.id == existing!.fixedCostId);
+        if (index >= 0) _fixedItem = _fixedOptions[index];
+      }
     });
   }
 
@@ -133,6 +187,11 @@ class _TransactionDialogState extends State<TransactionDialog> {
     setState(() {
       _listIndex = clamped;
       switch (_step) {
+        case TxStep.kind:
+          _kind = clamped == 0 ? ExpenseKind.fixed : ExpenseKind.variable;
+        case TxStep.fixedItem:
+          _fixedItem = _fixedOptions[clamped];
+          _amountController.text = formatMoneyPlain(_fixedItem!.amount);
         case TxStep.category:
           _category = _categories[clamped];
         case TxStep.toAccount:
@@ -148,9 +207,17 @@ class _TransactionDialogState extends State<TransactionDialog> {
     setState(() {
       _step = step;
       _listIndex = switch (step) {
+        TxStep.kind => _kind == ExpenseKind.fixed ? 0 : 1,
+        TxStep.fixedItem => _fixedItem == null
+            ? 0
+            : _fixedOptions
+                .indexWhere((i) => i.id == _fixedItem!.id)
+                .clamp(0, 999),
         TxStep.category => _category == null
             ? 0
-            : _categories.indexWhere((c) => c.id == _category!.id).clamp(0, 999),
+            : _categories
+                .indexWhere((c) => c.id == _category!.id)
+                .clamp(0, 999),
         TxStep.toAccount => _toAccountId == null
             ? 0
             : _transferTargets.indexOf(_toAccountId!).clamp(0, 999),
@@ -183,6 +250,12 @@ class _TransactionDialogState extends State<TransactionDialog> {
     if (_step == TxStep.category && _category == null) {
       _category = _categories[_listIndex];
     }
+    if (_step == TxStep.fixedItem &&
+        _fixedItem == null &&
+        _fixedOptions.isNotEmpty) {
+      _fixedItem = _fixedOptions[_listIndex];
+      _amountController.text = formatMoneyPlain(_fixedItem!.amount);
+    }
     if (_step == TxStep.toAccount && _toAccountId == null) {
       _toAccountId = _transferTargets[_listIndex];
     }
@@ -213,25 +286,40 @@ class _TransactionDialogState extends State<TransactionDialog> {
       _goToStep(TxStep.toAccount);
       return;
     }
-    if (_type != TxType.transfer && _category == null) {
+    if (_isExpense && _kind == ExpenseKind.fixed && _fixedItem == null) {
+      _goToStep(TxStep.fixedItem);
+      return;
+    }
+    if (_type != TxType.transfer &&
+        !(_isExpense && _kind == ExpenseKind.fixed) &&
+        _category == null) {
       _goToStep(TxStep.category);
       return;
     }
 
     setState(() => _saving = true);
 
+    final isFixed = _isExpense && _kind == ExpenseKind.fixed;
     final category = _category;
+
     final tx = Tx(
       id: widget.existing?.id ?? '',
       amount: amount,
       type: _type,
       date: widget.date,
       description: _descriptionController.text.trim(),
-      categoryId: category?.id ?? 'transferencia',
-      categoryName: category?.name ?? 'Transferência',
-      categoryColor: category?.color ?? AppColors.textSecondary,
+      categoryId: isFixed
+          ? 'fixos'
+          : (category?.id ?? 'transferencia'),
+      categoryName: isFixed
+          ? _fixedItem!.name
+          : (category?.name ?? 'Transferência'),
+      categoryColor: isFixed
+          ? AppColors.accent
+          : (category?.color ?? AppColors.textSecondary),
       accountId: _accountId,
       toAccountId: _type == TxType.transfer ? _toAccountId : null,
+      fixedCostId: isFixed ? _fixedItem!.id : null,
       createdAt: widget.existing?.createdAt,
     );
 
@@ -271,18 +359,16 @@ class _TransactionDialogState extends State<TransactionDialog> {
 
     if (_currentListLength == 0) return;
 
+    final columns = _step == TxStep.category ? _gridColumns : 1;
+
     if (key == LogicalKeyboardKey.arrowRight) {
       _applyListIndex(_listIndex + 1);
     } else if (key == LogicalKeyboardKey.arrowLeft) {
       _applyListIndex(_listIndex - 1);
     } else if (key == LogicalKeyboardKey.arrowDown) {
-      _applyListIndex(
-        _step == TxStep.category ? _listIndex + _gridColumns : _listIndex + 1,
-      );
+      _applyListIndex(_listIndex + columns);
     } else if (key == LogicalKeyboardKey.arrowUp) {
-      _applyListIndex(
-        _step == TxStep.category ? _listIndex - _gridColumns : _listIndex - 1,
-      );
+      _applyListIndex(_listIndex - columns);
     }
   }
 
@@ -305,6 +391,8 @@ class _TransactionDialogState extends State<TransactionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isFixedFlow = _isExpense && _kind == ExpenseKind.fixed;
+
     return KeyboardListener(
       focusNode: _keyboardFocus,
       onKeyEvent: _handleKey,
@@ -322,159 +410,250 @@ class _TransactionDialogState extends State<TransactionDialog> {
               width: AppBorders.normal,
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _accentForType,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    _title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${widget.date.day} de ${monthLabel(widget.date).toLowerCase()}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _AccountPill(accountId: _accountId),
-                ],
-              ),
-              const SizedBox(height: 18),
-              if (_type != TxType.transfer) ...[
-                _StepLabel(
-                  label: 'Categoria',
-                  active: _step == TxStep.category,
-                  hint: 'setas navegam, enter avança',
-                ),
-                const SizedBox(height: 10),
-                _CategoryGrid(
-                  categories: _categories,
-                  selected: _category,
-                  onSelect: (index) {
-                    setState(() => _step = TxStep.category);
-                    _applyListIndex(index);
-                    _keyboardFocus.requestFocus();
-                  },
-                ),
-                const SizedBox(height: 18),
-              ] else ...[
-                _StepLabel(
-                  label: 'Conta de destino',
-                  active: _step == TxStep.toAccount,
-                  hint: 'setas navegam, enter avança',
-                ),
-                const SizedBox(height: 10),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Row(
                   children: [
-                    for (var i = 0; i < _transferTargets.length; i++) ...[
-                      _TargetChip(
-                        accountId: _transferTargets[i],
-                        selected: _toAccountId == _transferTargets[i],
-                        onTap: () {
-                          setState(() => _step = TxStep.toAccount);
-                          _applyListIndex(i);
-                          _keyboardFocus.requestFocus();
-                        },
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _accentForType,
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 10),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 18),
-              ],
-              _StepLabel(
-                label: 'Valor',
-                active: _step == TxStep.amount,
-                hint: 'enter avança',
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _amountController,
-                focusNode: _amountFocus,
-                inputFormatters: [CurrencyInputFormatter()],
-                onTap: () => setState(() => _step = TxStep.amount),
-                onSubmitted: (_) => _nextStep(),
-                style: AppText.money(
-                  size: 22,
-                  weight: FontWeight.w600,
-                  color: _accentForType,
-                ),
-                decoration: _fieldDecoration(
-                  prefix: 'R\$ ',
-                  hint: '0,00',
-                  active: _step == TxStep.amount,
-                ),
-              ),
-              const SizedBox(height: 18),
-              _StepLabel(
-                label: 'Descrição',
-                active: _step == TxStep.description,
-                hint: 'enter salva',
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _descriptionController,
-                focusNode: _descriptionFocus,
-                onTap: () => setState(() => _step = TxStep.description),
-                onSubmitted: (_) => _nextStep(),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ),
-                decoration: _fieldDecoration(
-                  hint: 'Opcional',
-                  active: _step == TxStep.description,
-                ),
-              ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'esc fecha  ·  tab volta uma etapa',
-                      style: TextStyle(
-                        fontSize: 11,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${widget.date.day} de ${monthLabel(widget.date).toLowerCase()}',
+                      style: const TextStyle(
+                        fontSize: 12,
                         color: AppColors.textMuted,
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    _AccountPill(accountId: _accountId),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                if (_isExpense) ...[
+                  _StepLabel(
+                    label: 'Tipo de gasto',
+                    active: _step == TxStep.kind,
+                    hint: 'setas navegam, enter avança',
                   ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Cancelar',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _KindTile(
+                          label: 'Gasto fixo',
+                          icon: Icons.push_pin_outlined,
+                          selected: _kind == ExpenseKind.fixed,
+                          onTap: () {
+                            setState(() => _step = TxStep.kind);
+                            _applyListIndex(0);
+                            _keyboardFocus.requestFocus();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _KindTile(
+                          label: 'Gasto variável',
+                          icon: Icons.receipt_long_outlined,
+                          selected: _kind == ExpenseKind.variable,
+                          onTap: () {
+                            setState(() => _step = TxStep.kind);
+                            _applyListIndex(1);
+                            _keyboardFocus.requestFocus();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                if (isFixedFlow) ...[
+                  _StepLabel(
+                    label: 'Item fixo',
+                    active: _step == TxStep.fixedItem,
+                    hint: 'setas navegam, enter avança',
+                  ),
+                  const SizedBox(height: 10),
+                  if (_loadingFixed)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (_fixedOptions.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      child: Text(
+                        'Nenhum item fixo cadastrado para este mês',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    )
+                  else
+                    Column(
+                      children: [
+                        for (var i = 0; i < _fixedOptions.length; i++) ...[
+                          _FixedTile(
+                            item: _fixedOptions[i],
+                            selected: _fixedItem?.id == _fixedOptions[i].id,
+                            onTap: () {
+                              setState(() => _step = TxStep.fixedItem);
+                              _applyListIndex(i);
+                              _keyboardFocus.requestFocus();
+                            },
+                          ),
+                          if (i != _fixedOptions.length - 1)
+                            const SizedBox(height: 6),
+                        ],
+                      ],
+                    ),
+                  const SizedBox(height: 18),
+                ] else if (_type != TxType.transfer) ...[
+                  _StepLabel(
+                    label: 'Categoria',
+                    active: _step == TxStep.category,
+                    hint: 'setas navegam, enter avança',
+                  ),
+                  const SizedBox(height: 10),
+                  _CategoryGrid(
+                    categories: _categories,
+                    selected: _category,
+                    onSelect: (index) {
+                      setState(() => _step = TxStep.category);
+                      _applyListIndex(index);
+                      _keyboardFocus.requestFocus();
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                ] else ...[
+                  _StepLabel(
+                    label: 'Conta de destino',
+                    active: _step == TxStep.toAccount,
+                    hint: 'setas navegam, enter avança',
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      for (var i = 0; i < _transferTargets.length; i++) ...[
+                        _TargetChip(
+                          accountId: _transferTargets[i],
+                          selected: _toAccountId == _transferTargets[i],
+                          onTap: () {
+                            setState(() => _step = TxStep.toAccount);
+                            _applyListIndex(i);
+                            _keyboardFocus.requestFocus();
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                ],
+                _StepLabel(
+                  label: 'Valor',
+                  active: _step == TxStep.amount,
+                  hint: 'enter avança',
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _amountController,
+                  focusNode: _amountFocus,
+                  inputFormatters: [CurrencyInputFormatter()],
+                  onTap: () => setState(() => _step = TxStep.amount),
+                  onSubmitted: (_) => _nextStep(),
+                  style: AppText.money(
+                    size: 22,
+                    weight: FontWeight.w600,
+                    color: _accentForType,
+                  ),
+                  decoration: _fieldDecoration(
+                    prefix: 'R\$ ',
+                    hint: '0,00',
+                    active: _step == TxStep.amount,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _StepLabel(
+                  label: 'Descrição',
+                  active: _step == TxStep.description,
+                  hint: 'enter salva',
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _descriptionController,
+                  focusNode: _descriptionFocus,
+                  onTap: () => setState(() => _step = TxStep.description),
+                  onSubmitted: (_) => _nextStep(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: _fieldDecoration(
+                    hint: 'Opcional',
+                    active: _step == TxStep.description,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'esc fecha  ·  tab volta uma etapa',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  _SaveButton(
-                    loading: _saving,
-                    color: _accentForType,
-                    onPressed: _save,
-                  ),
-                ],
-              ),
-            ],
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _SaveButton(
+                      loading: _saving,
+                      color: _accentForType,
+                      onPressed: _save,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -528,6 +707,120 @@ class _TransactionDialogState extends State<TransactionDialog> {
         borderSide: const BorderSide(
           color: AppColors.accent,
           width: AppBorders.selected,
+        ),
+      ),
+    );
+  }
+}
+
+class _KindTile extends StatelessWidget {
+  const _KindTile({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 130),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accentSoft : AppColors.bg,
+            borderRadius: BorderRadius.circular(AppRadius.field),
+            border: Border.all(
+              color: selected ? AppColors.accent : AppColors.border,
+              width: selected ? AppBorders.selected : AppBorders.normal,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? AppColors.accent : AppColors.textMuted,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  color:
+                      selected ? AppColors.textPrimary : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FixedTile extends StatelessWidget {
+  const _FixedTile({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final FixedCost item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 130),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accentSoft : AppColors.bg,
+            borderRadius: BorderRadius.circular(AppRadius.field),
+            border: Border.all(
+              color: selected ? AppColors.accent : AppColors.border,
+              width: selected ? AppBorders.selected : AppBorders.normal,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    color: selected
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              Text(
+                formatMoney(item.amount),
+                style: AppText.money(
+                  size: 12.5,
+                  weight: FontWeight.w500,
+                  color: selected ? AppColors.accent : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

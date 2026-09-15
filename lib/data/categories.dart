@@ -38,6 +38,15 @@ const expenseCategories = <CategoryInfo>[
     icon: Icons.directions_car_outlined,
     isIncome: false,
   ),
+
+  CategoryInfo(
+    id: 'uber',
+    name: 'Uber',
+    color: Color(0xFF8AA0B4),
+    icon: Icons.local_taxi_outlined,
+    isIncome: false,
+  ),
+
   CategoryInfo(
     id: 'moradia',
     name: 'Moradia',
@@ -66,6 +75,15 @@ const expenseCategories = <CategoryInfo>[
     icon: Icons.sports_esports_outlined,
     isIncome: false,
   ),
+
+  CategoryInfo(
+    id: 'festas',
+    name: 'Festas e barzinhos',
+    color: Color(0xFFC77DFF),
+    icon: Icons.celebration_outlined,
+    isIncome: false,
+  ),
+
   CategoryInfo(
     id: 'assinaturas',
     name: 'Assinaturas',
@@ -102,6 +120,13 @@ const expenseCategories = <CategoryInfo>[
     isIncome: false,
   ),
   CategoryInfo(
+    id: 'fixos',
+    name: 'Gastos fixos',
+    color: Color(0xFF4DA3FF),
+    icon: Icons.push_pin_outlined,
+    isIncome: false,
+  ),
+  CategoryInfo(
     id: 'outros',
     name: 'Outros',
     color: Color(0xFF9AA1A8),
@@ -118,6 +143,15 @@ const incomeCategories = <CategoryInfo>[
     icon: Icons.payments_outlined,
     isIncome: true,
   ),
+
+  CategoryInfo(
+    id: 'vale-transporte',
+    name: 'Vale transporte',
+    color: Color(0xFF7CC5FF),
+    icon: Icons.directions_bus_outlined,
+    isIncome: true,
+  ),
+
   CategoryInfo(
     id: 'freelance',
     name: 'Freelance',

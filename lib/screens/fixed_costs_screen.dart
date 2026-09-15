@@ -105,10 +105,17 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<FixedCost>>(
-      stream: FinanceService.watchFixedCosts(),
-      builder: (context, snapshot) {
-        final all = snapshot.data ?? const <FixedCost>[];
+    return StreamBuilder<Set<String>>(
+      stream: FinanceService.watchPaidFixedCosts(
+        DateTime(_year, _month),
+      ),
+      builder: (context, paidSnap) {
+        final paid = paidSnap.data ?? const <String>{};
+
+        return StreamBuilder<List<FixedCost>>(
+          stream: FinanceService.watchFixedCosts(),
+          builder: (context, snapshot) {
+            final all = snapshot.data ?? const <FixedCost>[];
 
         final monthly = [
           for (var i = 1; i <= 12; i++)
@@ -120,6 +127,11 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
 
         final current = monthly[_month - 1];
         final yearTotal = monthly.fold<double>(0, (a, m) => a + m.total);
+
+            final paidTotal = current.parents
+                .where((item) => paid.contains(item.id))
+                .fold<double>(0, (a, item) => a + current.amountOf(item));
+            final pendingTotal = current.total - paidTotal;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,6 +212,37 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _SummaryCard(
+                              label: 'Pago',
+                              value: paidTotal,
+                              color: const Color(0xFF3FAE6B),
+                              icon: Icons.check_circle_outline,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _SummaryCard(
+                              label: 'A pagar',
+                              value: pendingTotal,
+                              color: AppColors.expense,
+                              icon: Icons.schedule,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _SummaryCard(
+                              label: 'Total do mês',
+                              value: current.total,
+                              color: AppColors.accent,
+                              icon: Icons.push_pin_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
                       AppCard(
                         title: 'Itens de ${monthNames[_month - 1]}',
                         subtitle: 'Custo fixo de ${formatMoney(current.total)}',
@@ -213,6 +256,7 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
                                     _ItemRow(
                                       item: item,
                                       amount: current.amountOf(item),
+                                      paid: paid.contains(item.id),
                                       children:
                                           current.childrenByParent[item.id] ??
                                               const [],
@@ -244,7 +288,9 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
                 ),
               ),
             ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
@@ -355,6 +401,7 @@ class _ItemRow extends StatelessWidget {
   const _ItemRow({
     required this.item,
     required this.amount,
+    required this.paid,
     required this.children,
     required this.year,
     required this.onDelete,
@@ -362,6 +409,7 @@ class _ItemRow extends StatelessWidget {
 
   final FixedCost item;
   final double amount;
+  final bool paid;
   final List<FixedCost> children;
   final int year;
   final ValueChanged<FixedCost> onDelete;
@@ -374,6 +422,7 @@ class _ItemRow extends StatelessWidget {
         _Line(
           name: item.name,
           amount: amount,
+          paid: paid,
           period: _periodLabel(item),
           bold: true,
           onEdit: () => showFixedCostDialog(
@@ -408,6 +457,7 @@ class _ItemRow extends StatelessWidget {
                   _Line(
                     name: child.name,
                     amount: child.amount,
+                    paid: false,
                     period: _periodLabel(child),
                     bold: false,
                     onEdit: () => showFixedCostDialog(
@@ -447,6 +497,7 @@ class _Line extends StatefulWidget {
   const _Line({
     required this.name,
     required this.amount,
+    required this.paid,
     required this.period,
     required this.bold,
     required this.onEdit,
@@ -456,6 +507,7 @@ class _Line extends StatefulWidget {
 
   final String name;
   final double amount;
+  final bool paid;
   final String? period;
   final bool bold;
   final VoidCallback onEdit;
@@ -479,6 +531,18 @@ class _LineState extends State<_Line> {
         onTap: widget.onEdit,
         child: Row(
           children: [
+            if (widget.bold) ...[
+              Icon(
+                widget.paid
+                    ? Icons.check_circle
+                    : Icons.radio_button_unchecked,
+                size: 15,
+                color: widget.paid
+                    ? const Color(0xFF3FAE6B)
+                    : AppColors.textMuted,
+              ),
+              const SizedBox(width: 10),
+            ],
             Expanded(
               child: Row(
                 children: [
@@ -524,41 +588,33 @@ class _LineState extends State<_Line> {
               style: AppText.money(
                 size: widget.bold ? 13.5 : 12.5,
                 weight: widget.bold ? FontWeight.w600 : FontWeight.w500,
-                color: widget.bold
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
+                color: widget.paid
+                    ? const Color(0xFF3FAE6B)
+                    : (widget.bold
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary),
               ),
             ),
             SizedBox(
-              width: widget.onAddChild == null ? 34 : 66,
-              child: _hover
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (widget.onAddChild != null)
-                          IconButton(
-                            onPressed: widget.onAddChild,
-                            icon: const Icon(
-                              Icons.add,
-                              size: 16,
-                              color: AppColors.textMuted,
-                            ),
-                            splashRadius: 16,
-                            tooltip: 'Adicionar dentro',
-                          ),
-                        IconButton(
-                          onPressed: widget.onDelete,
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            size: 16,
-                            color: AppColors.textMuted,
-                          ),
-                          splashRadius: 16,
-                          tooltip: 'Excluir',
-                        ),
-                      ],
-                    )
-                  : null,
+              width: widget.onAddChild == null ? 32 : 60,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (widget.onAddChild != null)
+                    _RowAction(
+                      icon: Icons.add,
+                      tooltip: 'Adicionar dentro',
+                      visible: _hover,
+                      onTap: widget.onAddChild!,
+                    ),
+                  _RowAction(
+                    icon: Icons.delete_outline,
+                    tooltip: 'Excluir',
+                    visible: _hover,
+                    onTap: widget.onDelete,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -655,6 +711,100 @@ class _ArrowState extends State<_Arrow> {
             color: _hover ? AppColors.textPrimary : AppColors.textMuted,
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class _RowAction extends StatelessWidget {
+  const _RowAction({
+    required this.icon,
+    required this.tooltip,
+    required this.visible,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool visible;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 120),
+        opacity: visible ? 1 : 0,
+        child: IgnorePointer(
+          ignoring: !visible,
+          child: Tooltip(
+            message: tooltip,
+            waitDuration: const Duration(milliseconds: 500),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: onTap,
+                child: Center(
+                  child: Icon(icon, size: 16, color: AppColors.textMuted),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final double value;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            formatMoney(value),
+            style: AppText.money(
+              size: 19,
+              color: color,
+              weight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

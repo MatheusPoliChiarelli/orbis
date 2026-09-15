@@ -15,6 +15,7 @@ class Tx {
     required this.categoryColor,
     required this.accountId,
     this.toAccountId,
+    this.fixedCostId,
     this.createdAt,
   });
 
@@ -28,11 +29,16 @@ class Tx {
   final Color categoryColor;
   final String accountId;
   final String? toAccountId;
+
+  /// Preenchido quando a saída quita um item de gasto fixo.
+  final String? fixedCostId;
+
   final DateTime? createdAt;
 
   bool get isTransfer => type == TxType.transfer;
   bool get isIncome => type == TxType.income;
   bool get isExpense => type == TxType.expense;
+  bool get isFixed => fixedCostId != null;
 
   factory Tx.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? <String, dynamic>{};
@@ -50,6 +56,7 @@ class Tx {
       categoryColor: Color(data['categoryColor'] as int? ?? 0xFF9AA1A8),
       accountId: data['accountId'] as String? ?? '',
       toAccountId: data['toAccountId'] as String?,
+      fixedCostId: data['fixedCostId'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -65,6 +72,7 @@ class Tx {
       'categoryColor': categoryColor.toARGB32(),
       'accountId': accountId,
       'toAccountId': toAccountId,
+      'fixedCostId': fixedCostId,
       'createdAt': createdAt == null
           ? FieldValue.serverTimestamp()
           : Timestamp.fromDate(createdAt!),
@@ -81,6 +89,7 @@ class Tx {
     Color? categoryColor,
     String? accountId,
     String? toAccountId,
+    String? fixedCostId,
   }) {
     return Tx(
       id: id,
@@ -93,6 +102,7 @@ class Tx {
       categoryColor: categoryColor ?? this.categoryColor,
       accountId: accountId ?? this.accountId,
       toAccountId: toAccountId ?? this.toAccountId,
+      fixedCostId: fixedCostId ?? this.fixedCostId,
       createdAt: createdAt,
     );
   }

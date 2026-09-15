@@ -253,7 +253,7 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                     onNewExpense: () => _openDialog(type: TxType.expense),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 4, 28, 14),
+                    padding: const EdgeInsets.fromLTRB(28, 4, 28, 18),
                     child: DayStrip(
                       month: _month,
                       selectedDay: _selectedDay,

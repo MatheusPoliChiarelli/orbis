@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 
+const _gap = 5.0;
+const _cellHeight = 52.0;
+
 class DayStrip extends StatelessWidget {
   const DayStrip({
     super.key,
@@ -22,31 +25,33 @@ class DayStrip extends StatelessWidget {
     final isCurrentMonth =
         today.year == month.year && today.month == month.month;
 
-    return SizedBox(
-      height: 62,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: daysInMonth,
-          separatorBuilder: (_, index) => const SizedBox(width: 6),
-          itemBuilder: (context, index) {
-            final day = index + 1;
-            final date = DateTime(month.year, month.month, day);
-            final isPast = isCurrentMonth && day < today.day;
-            final isToday = isCurrentMonth && day == today.day;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width =
+            (constraints.maxWidth - _gap * (daysInMonth - 1)) / daysInMonth;
 
-            return _DayCell(
-              day: day,
-              weekday: weekdayShort[date.weekday - 1],
-              selected: day == selectedDay,
-              past: isPast,
-              today: isToday,
-              onTap: () => onSelect(day),
-            );
-          },
-        ),
-      ),
+        return SizedBox(
+          height: _cellHeight,
+          child: Row(
+            children: [
+              for (var day = 1; day <= daysInMonth; day++)
+                Padding(
+                  padding: EdgeInsets.only(right: day == daysInMonth ? 0 : _gap),
+                  child: _DayCell(
+                    day: day,
+                    width: width,
+                    weekday: weekdayShort[
+                        DateTime(month.year, month.month, day).weekday - 1],
+                    selected: day == selectedDay,
+                    past: isCurrentMonth && day < today.day,
+                    today: isCurrentMonth && day == today.day,
+                    onTap: () => onSelect(day),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -54,6 +59,7 @@ class DayStrip extends StatelessWidget {
 class _DayCell extends StatefulWidget {
   const _DayCell({
     required this.day,
+    required this.width,
     required this.weekday,
     required this.selected,
     required this.past,
@@ -62,6 +68,7 @@ class _DayCell extends StatefulWidget {
   });
 
   final int day;
+  final double width;
   final String weekday;
   final bool selected;
   final bool past;
@@ -97,7 +104,8 @@ class _DayCellState extends State<_DayCell> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
-          width: 52,
+          width: widget.width,
+          height: _cellHeight,
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(AppRadius.field),
@@ -118,16 +126,16 @@ class _DayCellState extends State<_DayCell> {
               Text(
                 widget.weekday,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 9.5,
                   color: selected ? AppColors.accent : AppColors.textMuted,
-                  letterSpacing: 0.4,
+                  letterSpacing: 0.3,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 '${widget.day}',
                 style: AppText.money(
-                  size: 15,
+                  size: 14,
                   color: numberColor,
                   weight: selected ? FontWeight.w600 : FontWeight.w500,
                 ),

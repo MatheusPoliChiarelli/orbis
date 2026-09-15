@@ -13,7 +13,6 @@ import '../widgets/all_transactions_card.dart';
 import '../widgets/app_card.dart';
 import '../widgets/bar_chart_card.dart';
 import '../widgets/category_ranking_card.dart';
-import '../widgets/cumulative_chart_card.dart';
 import '../widgets/transaction_dialog.dart';
 import 'package:flutter/services.dart';
 
@@ -218,10 +217,32 @@ class _YearSummaryScreenState extends State<YearSummaryScreen> {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Despesas',
+                                    label: 'Gastos totais',
                                     value: stats.expense,
                                     color: AppColors.expense,
                                     icon: Icons.arrow_downward,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _BigMetric(
+                                    label: 'Gastos fixos',
+                                    value: stats.expenseFixed,
+                                    color: AppColors.accent,
+                                    icon: Icons.push_pin_outlined,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: _BigMetric(
+                                    label: 'Gastos variáveis',
+                                    value: stats.expenseVariable,
+                                    color: const Color(0xFFE8A15F),
+                                    icon: Icons.receipt_long_outlined,
                                   ),
                                 ),
                               ],
@@ -235,13 +256,6 @@ class _YearSummaryScreenState extends State<YearSummaryScreen> {
                               categoryIds: stats.categoryIds,
                               total: stats.expense,
                               subtitle: 'Ano de $_year',
-                            ),
-                            const SizedBox(height: 14),
-                            CumulativeChartCard(
-                              title: 'Patrimônio ao longo do ano',
-                              subtitle: 'Saldo acumulado mês a mês',
-                              values: stats.cumulative,
-                              labels: monthLabels,
                             ),
                             const SizedBox(height: 14),
                             IntrinsicHeight(

@@ -13,7 +13,6 @@ import '../widgets/app_card.dart';
 import '../widgets/category_ranking_card.dart';
 import '../widgets/all_transactions_card.dart';
 import '../widgets/bar_chart_card.dart';
-import '../widgets/cumulative_chart_card.dart';
 import '../widgets/transaction_dialog.dart';
 import 'package:flutter/services.dart';
 
@@ -221,10 +220,32 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Despesas',
+                                    label: 'Gastos totais',
                                     value: stats.expense,
                                     color: AppColors.expense,
                                     icon: Icons.arrow_downward,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _BigMetric(
+                                    label: 'Gastos fixos',
+                                    value: stats.expenseFixed,
+                                    color: AppColors.accent,
+                                    icon: Icons.push_pin_outlined,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: _BigMetric(
+                                    label: 'Gastos variáveis',
+                                    value: stats.expenseVariable,
+                                    color: const Color(0xFFE8A15F),
+                                    icon: Icons.receipt_long_outlined,
                                   ),
                                 ),
                               ],
@@ -238,13 +259,6 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                               categoryIds: stats.categoryIds,
                               total: stats.expense,
                               subtitle: periodLabel,
-                            ),
-                            const SizedBox(height: 14),
-                            CumulativeChartCard(
-                              title: 'Patrimônio ao longo do mês',
-                              subtitle: 'Saldo acumulado dia a dia',
-                              values: stats.cumulative,
-                              labels: dayLabels,
                             ),
                             const SizedBox(height: 14),
                             IntrinsicHeight(

@@ -6,6 +6,8 @@ class YearStats {
   const YearStats({
     required this.income,
     required this.expense,
+    required this.expenseFixed,
+    required this.expenseVariable,
     required this.count,
     required this.monthlyIncome,
     required this.monthlyExpense,
@@ -17,6 +19,8 @@ class YearStats {
 
   final double income;
   final double expense;
+  final double expenseFixed;
+  final double expenseVariable;
   final int count;
 
   /// Índice 0 é janeiro.
@@ -79,6 +83,8 @@ class YearStats {
 
     var income = 0.0;
     var expense = 0.0;
+    var expenseFixed = 0.0;
+    var expenseVariable = 0.0;
     var count = 0;
 
     for (final tx in transactions) {
@@ -94,6 +100,11 @@ class YearStats {
         monthlyIncome[index] += tx.amount;
       } else {
         expense += tx.amount;
+        if (tx.isFixed) {
+          expenseFixed += tx.amount;
+        } else {
+          expenseVariable += tx.amount;
+        }
         monthlyExpense[index] += tx.amount;
         byCategory[tx.categoryName] =
             (byCategory[tx.categoryName] ?? 0) + tx.amount;
@@ -117,6 +128,8 @@ class YearStats {
     return YearStats(
       income: income,
       expense: expense,
+      expenseFixed: expenseFixed,
+      expenseVariable: expenseVariable,
       count: count,
       monthlyIncome: monthlyIncome,
       monthlyExpense: monthlyExpense,
