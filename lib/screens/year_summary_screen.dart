@@ -15,7 +15,7 @@ import '../widgets/bar_chart_card.dart';
 import '../widgets/category_ranking_card.dart';
 import '../widgets/transaction_dialog.dart';
 import 'package:flutter/services.dart';
-
+import '../widgets/category_filter_chips.dart';
 
 
 final _accountKeys = <LogicalKeyboardKey, String>{
@@ -30,6 +30,19 @@ class YearSummaryScreen extends StatefulWidget {
   @override
   State<YearSummaryScreen> createState() => _YearSummaryScreenState();
 }
+
+  ExpenseFilter _expenseFilter = ExpenseFilter.all;
+
+  Map<String, double> _filteredExpenses(YearStats stats) {
+    if (_expenseFilter == ExpenseFilter.all) return stats.byCategory;
+
+    final wantFixed = _expenseFilter == ExpenseFilter.fixed;
+    return {
+      for (final entry in stats.byCategory.entries)
+        if (stats.fixedCategoryNames.contains(entry.key) == wantFixed)
+          entry.key: entry.value,
+    };
+  }
 
 class _YearSummaryScreenState extends State<YearSummaryScreen> {
   int _year = DateTime.now().year;
@@ -208,19 +221,19 @@ class _YearSummaryScreenState extends State<YearSummaryScreen> {
                               children: [
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Receitas',
-                                    value: stats.income,
-                                    color: AppColors.income,
-                                    icon: Icons.arrow_upward,
+                                    label: 'Gastos totais',
+                                    value: stats.expense,
+                                    color: AppColors.expense,
+                                    icon: Icons.arrow_downward,
                                   ),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Gastos totais',
-                                    value: stats.expense,
-                                    color: AppColors.expense,
-                                    icon: Icons.arrow_downward,
+                                    label: 'Receitas',
+                                    value: stats.income,
+                                    color: AppColors.income,
+                                    icon: Icons.arrow_upward,
                                   ),
                                 ),
                               ],
@@ -250,12 +263,51 @@ class _YearSummaryScreenState extends State<YearSummaryScreen> {
                             const SizedBox(height: 14),
                             _MetricsRow(stats: stats),
                             const SizedBox(height: 14),
-                            CategoryRankingCard(
-                              byCategory: stats.byCategory,
-                              categoryColors: stats.categoryColors,
-                              categoryIds: stats.categoryIds,
-                              total: stats.expense,
-                              subtitle: 'Ano de $_year',
+                            IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: Builder(
+                                      builder: (context) {
+                                        final filtered =
+                                            _filteredExpenses(stats);
+                                        final total = filtered.values.fold(
+                                          0.0,
+                                          (a, value) => a + value,
+                                        );
+                                        return CategoryRankingCard(
+                                          byCategory: filtered,
+                                          categoryColors: stats.categoryColors,
+                                          categoryIds: stats.categoryIds,
+                                          total: total,
+                                          subtitle: 'Ano de $_year',
+                                          action: CategoryFilterChips(
+                                            selected: _expenseFilter,
+                                            onSelect: (value) => setState(
+                                              () => _expenseFilter = value,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: CategoryRankingCard(
+                                      title: 'Entradas por categoria',
+                                      emptyMessage:
+                                          'Sem entradas registradas neste período',
+                                      byCategory: stats.incomeByCategory,
+                                      categoryColors:
+                                          stats.incomeCategoryColors,
+                                      categoryIds: stats.incomeCategoryIds,
+                                      total: stats.income,
+                                      subtitle: 'Ano de $_year',
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 14),
                             IntrinsicHeight(
@@ -264,20 +316,20 @@ class _YearSummaryScreenState extends State<YearSummaryScreen> {
                                 children: [
                                   Expanded(
                                     child: BarChartCard(
-                                      title: 'Entradas por mês',
+                                      title: 'Saídas por mês',
                                       subtitle: 'Ano de $_year',
-                                      values: stats.monthlyIncome,
-                                      color: AppColors.income,
+                                      values: stats.monthlyExpense,
+                                      color: AppColors.expense,
                                       labels: monthLabels,
                                     ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: BarChartCard(
-                                      title: 'Saídas por mês',
+                                      title: 'Entradas por mês',
                                       subtitle: 'Ano de $_year',
-                                      values: stats.monthlyExpense,
-                                      color: AppColors.expense,
+                                      values: stats.monthlyIncome,
+                                      color: AppColors.income,
                                       labels: monthLabels,
                                     ),
                                   ),

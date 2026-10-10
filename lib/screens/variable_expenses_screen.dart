@@ -271,34 +271,17 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                           children: [
                             DaySummaryCards(transactions: dayTx),
                             const SizedBox(height: 14),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(minHeight: 320),
-                              child: IntrinsicHeight(
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(
-                                      child: CategoryBreakdownCard(
-                                        transactions: dayTx,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: TransactionListCard(
-                                        transactions: dayTx,
-                                        showAccountBadge: _isGeneral,
-                                        onEdit: (tx) => _openDialog(
-                                          type: tx.type,
-                                          existing: tx,
-                                        ),
-                                        onDelete: _confirmDelete,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            TransactionListCard(
+                              transactions: dayTx,
+                              showAccountBadge: _isGeneral,
+                              onEdit: (tx) => _openDialog(
+                                type: tx.type,
+                                existing: tx,
                               ),
+                              onDelete: _confirmDelete,
                             ),
+                            const SizedBox(height: 14),
+                            CategoryBreakdownCard(transactions: dayTx),
                           ],
                         ),
                       ),
@@ -400,23 +383,31 @@ class _Header extends StatelessWidget {
                 balances: balances,
               ),
               const Spacer(),
-              if (!isGeneral) ...[
-                _ActionButton(
-                  label: 'Entrada',
-                  icon: Icons.arrow_upward,
-                  color: AppColors.income,
-                  enabled: true,
-                  onTap: onNewIncome,
+              Opacity(
+                opacity: isGeneral ? 0 : 1,
+                child: IgnorePointer(
+                  ignoring: isGeneral,
+                  child: Row(
+                    children: [
+                      _ActionButton(
+                        label: 'Saída',
+                        icon: Icons.arrow_downward,
+                        color: AppColors.expense,
+                        enabled: true,
+                        onTap: onNewExpense,
+                      ),
+                      const SizedBox(width: 10),
+                      _ActionButton(
+                        label: 'Entrada',
+                        icon: Icons.arrow_upward,
+                        color: AppColors.income,
+                        enabled: true,
+                        onTap: onNewIncome,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 10),
-                _ActionButton(
-                  label: 'Saída',
-                  icon: Icons.arrow_downward,
-                  color: AppColors.expense,
-                  enabled: true,
-                  onTap: onNewExpense,
-                ),
-              ],
+              ),
             ],
           ),
         ],
@@ -449,52 +440,62 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = widget.enabled;
-    final color = enabled ? widget.color : AppColors.textMuted;
+    final color = widget.color;
 
-    return Tooltip(
-      message: enabled
-          ? 'Escolha uma conta para lançar'
-          : 'Selecione Nubank ou Bradesco para lançar',
-      waitDuration: const Duration(milliseconds: 600),
-      child: MouseRegion(
-        cursor: enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.forbidden,
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: GestureDetector(
-          onTap: enabled ? widget.onTap : null,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
-            decoration: BoxDecoration(
-              color: enabled && _hover
-                  ? color.withValues(alpha: 0.15)
-                  : AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.chip),
-              border: Border.all(
-                color: enabled
-                    ? color.withValues(alpha: _hover ? 0.55 : 0.32)
-                    : AppColors.border,
-                width: AppBorders.normal,
-              ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 140,
+          padding: const EdgeInsets.fromLTRB(5, 5, 5, 5),
+          decoration: BoxDecoration(
+            color: _hover
+                ? color.withValues(alpha: 0.14)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            border: Border.all(
+              color: color.withValues(alpha: _hover ? 0.55 : 0.32),
+              width: AppBorders.normal,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(widget.icon, size: 14, color: color),
-                const SizedBox(width: 7),
-                Text(
+            boxShadow: _hover
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.20),
+                      blurRadius: 18,
+                      spreadRadius: -6,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(widget.icon, size: 14, color: color),
+              ),
+              Expanded(
+                child: Text(
                   widget.label,
-                  style: TextStyle(
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
-                    color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 26),
+            ],
           ),
         ),
       ),

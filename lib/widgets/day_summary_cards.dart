@@ -28,19 +28,19 @@ class DaySummaryCards extends StatelessWidget {
       children: [
         Expanded(
           child: _MetricCard(
-            label: 'Entradas',
-            value: income,
-            color: AppColors.income,
-            icon: Icons.arrow_upward,
+            label: 'Saídas',
+            value: expense,
+            color: AppColors.expense,
+            icon: Icons.arrow_downward,
           ),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: _MetricCard(
-            label: 'Saídas',
-            value: expense,
-            color: AppColors.expense,
-            icon: Icons.arrow_downward,
+            label: 'Entradas',
+            value: income,
+            color: AppColors.income,
+            icon: Icons.arrow_upward,
           ),
         ),
         const SizedBox(width: 14),

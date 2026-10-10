@@ -15,7 +15,7 @@ import '../widgets/all_transactions_card.dart';
 import '../widgets/bar_chart_card.dart';
 import '../widgets/transaction_dialog.dart';
 import 'package:flutter/services.dart';
-
+import '../widgets/category_filter_chips.dart';
 
 final _accountKeys = <LogicalKeyboardKey, String>{
   LogicalKeyboardKey.keyG: kGeneralAccountId,
@@ -211,19 +211,19 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                               children: [
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Receitas',
-                                    value: stats.income,
-                                    color: AppColors.income,
-                                    icon: Icons.arrow_upward,
+                                    label: 'Gastos totais',
+                                    value: stats.expense,
+                                    color: AppColors.expense,
+                                    icon: Icons.arrow_downward,
                                   ),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Gastos totais',
-                                    value: stats.expense,
-                                    color: AppColors.expense,
-                                    icon: Icons.arrow_downward,
+                                    label: 'Receitas',
+                                    value: stats.income,
+                                    color: AppColors.income,
+                                    icon: Icons.arrow_upward,
                                   ),
                                 ),
                               ],
@@ -253,12 +253,51 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                             const SizedBox(height: 14),
                             _MetricsRow(stats: stats),
                             const SizedBox(height: 14),
-                            CategoryRankingCard(
-                              byCategory: stats.byCategory,
-                              categoryColors: stats.categoryColors,
-                              categoryIds: stats.categoryIds,
-                              total: stats.expense,
-                              subtitle: periodLabel,
+                            IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: Builder(
+                                      builder: (context) {
+                                        final filtered =
+                                            _filteredExpenses(stats);
+                                        final total = filtered.values.fold(
+                                          0.0,
+                                          (a, value) => a + value,
+                                        );
+                                        return CategoryRankingCard(
+                                          byCategory: filtered,
+                                          categoryColors: stats.categoryColors,
+                                          categoryIds: stats.categoryIds,
+                                          total: total,
+                                          subtitle: periodLabel,
+                                          action: CategoryFilterChips(
+                                            selected: _expenseFilter,
+                                            onSelect: (value) => setState(
+                                              () => _expenseFilter = value,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: CategoryRankingCard(
+                                      title: 'Entradas por categoria',
+                                      emptyMessage:
+                                          'Sem entradas registradas neste período',
+                                      byCategory: stats.incomeByCategory,
+                                      categoryColors:
+                                          stats.incomeCategoryColors,
+                                      categoryIds: stats.incomeCategoryIds,
+                                      total: stats.income,
+                                      subtitle: periodLabel,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 14),
                             IntrinsicHeight(
@@ -267,20 +306,20 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                                 children: [
                                   Expanded(
                                     child: BarChartCard(
-                                      title: 'Entradas por dia',
+                                      title: 'Saídas por dia',
                                       subtitle: periodLabel,
-                                      values: stats.dailyIncome,
-                                      color: AppColors.income,
+                                      values: stats.dailyExpense,
+                                      color: AppColors.expense,
                                       labels: dayLabels,
                                     ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: BarChartCard(
-                                      title: 'Saídas por dia',
+                                      title: 'Entradas por dia',
                                       subtitle: periodLabel,
-                                      values: stats.dailyExpense,
-                                      color: AppColors.expense,
+                                      values: stats.dailyIncome,
+                                      color: AppColors.income,
                                       labels: dayLabels,
                                     ),
                                   ),
@@ -309,6 +348,20 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
       },
     );
   }
+
+  ExpenseFilter _expenseFilter = ExpenseFilter.all;
+
+  Map<String, double> _filteredExpenses(MonthStats stats) {
+    if (_expenseFilter == ExpenseFilter.all) return stats.byCategory;
+
+    final wantFixed = _expenseFilter == ExpenseFilter.fixed;
+    return {
+      for (final entry in stats.byCategory.entries)
+        if (stats.fixedCategoryNames.contains(entry.key) == wantFixed)
+          entry.key: entry.value,
+    };
+  }
+
 }
 
 class _BigMetric extends StatelessWidget {

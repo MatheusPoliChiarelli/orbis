@@ -14,6 +14,10 @@ class YearStats {
     required this.byCategory,
     required this.categoryColors,
     required this.categoryIds,
+    required this.incomeByCategory,
+    required this.incomeCategoryColors,
+    required this.incomeCategoryIds,
+    required this.fixedCategoryNames,
     required this.opening,
   });
 
@@ -30,6 +34,13 @@ class YearStats {
   final Map<String, double> byCategory;
   final Map<String, int> categoryColors;
   final Map<String, String> categoryIds;
+
+  final Map<String, double> incomeByCategory;
+  final Map<String, int> incomeCategoryColors;
+  final Map<String, String> incomeCategoryIds;
+
+  /// Nomes de categoria que vieram de lançamentos de gasto fixo.
+  final Set<String> fixedCategoryNames;
 
   final double opening;
 
@@ -78,6 +89,10 @@ class YearStats {
     final byCategory = <String, double>{};
     final categoryColors = <String, int>{};
     final categoryIds = <String, String>{};
+    final incomeByCategory = <String, double>{};
+    final incomeCategoryColors = <String, int>{};
+    final incomeCategoryIds = <String, String>{};
+    final fixedCategoryNames = <String>{};
 
     final isGeneral = accountId == kGeneralAccountId;
 
@@ -98,10 +113,15 @@ class YearStats {
       if (tx.isIncome) {
         income += tx.amount;
         monthlyIncome[index] += tx.amount;
+        incomeByCategory[tx.categoryName] =
+            (incomeByCategory[tx.categoryName] ?? 0) + tx.amount;
+        incomeCategoryColors[tx.categoryName] = tx.categoryColor.toARGB32();
+        incomeCategoryIds[tx.categoryName] = tx.categoryId;
       } else {
         expense += tx.amount;
         if (tx.isFixed) {
           expenseFixed += tx.amount;
+          fixedCategoryNames.add(tx.categoryName);
         } else {
           expenseVariable += tx.amount;
         }
@@ -136,6 +156,10 @@ class YearStats {
       byCategory: byCategory,
       categoryColors: categoryColors,
       categoryIds: categoryIds,
+      incomeByCategory: incomeByCategory,
+      incomeCategoryColors: incomeCategoryColors,
+      incomeCategoryIds: incomeCategoryIds,
+      fixedCategoryNames: fixedCategoryNames,
       opening: opening,
     );
   }

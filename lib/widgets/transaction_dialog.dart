@@ -16,6 +16,23 @@ enum ExpenseKind { fixed, variable }
 
 const _gridColumns = 3;
 
+const _accents = <String, String>{
+  'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a',
+  'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+  'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+  'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+  'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+  'ç': 'c',
+};
+
+String _normalize(String value) {
+  final buffer = StringBuffer();
+  for (final char in value.toLowerCase().split('')) {
+    buffer.write(_accents[char] ?? char);
+  }
+  return buffer.toString();
+}
+
 Future<void> showTransactionDialog({
   required BuildContext context,
   required DateTime date,
@@ -57,15 +74,19 @@ class _TransactionDialogState extends State<TransactionDialog> {
   final FocusNode _keyboardFocus = FocusNode();
   final FocusNode _amountFocus = FocusNode();
   final FocusNode _descriptionFocus = FocusNode();
+  final FocusNode _searchFocus = FocusNode();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+
+  String _search = '';
 
   late TxType _type;
   late String _accountId;
   String? _toAccountId;
   CategoryInfo? _category;
 
-  ExpenseKind _kind = ExpenseKind.variable;
+  ExpenseKind _kind = ExpenseKind.fixed;
   FixedCost? _fixedItem;
   List<FixedCost> _fixedOptions = const [];
   bool _loadingFixed = false;
@@ -76,8 +97,16 @@ class _TransactionDialogState extends State<TransactionDialog> {
 
   bool get _isExpense => _type == TxType.expense;
 
-  List<CategoryInfo> get _categories =>
+  List<CategoryInfo> get _allCategories =>
       _type == TxType.income ? incomeCategories : expenseCategories;
+
+  List<CategoryInfo> get _categories {
+    if (_search.trim().isEmpty) return _allCategories;
+    final query = _normalize(_search.trim());
+    return _allCategories
+        .where((c) => _normalize(c.name).contains(query))
+        .toList();
+  }
 
   List<TxStep> get _stepFlow {
     if (_type == TxType.transfer) {
@@ -142,7 +171,11 @@ class _TransactionDialogState extends State<TransactionDialog> {
     if (_isExpense) _loadFixedOptions();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _keyboardFocus.requestFocus();
+      if (_step == TxStep.category) {
+        _searchFocus.requestFocus();
+      } else {
+        _keyboardFocus.requestFocus();
+      }
     });
   }
 
@@ -176,7 +209,10 @@ class _TransactionDialogState extends State<TransactionDialog> {
     _descriptionFocus.dispose();
     _amountController.dispose();
     _descriptionController.dispose();
+    _searchFocus.dispose();
+    _searchController.dispose();
     super.dispose();
+  
   }
 
   void _applyListIndex(int index) {
@@ -226,6 +262,15 @@ class _TransactionDialogState extends State<TransactionDialog> {
       };
     });
 
+    if (step == TxStep.category && _category == null) {
+      _applyListIndex(0);
+    }
+    if (step == TxStep.fixedItem &&
+        _fixedItem == null &&
+        _fixedOptions.isNotEmpty) {
+      _applyListIndex(0);
+    }
+
     if (step == TxStep.amount) {
       _amountFocus.requestFocus();
       _amountController.selection = TextSelection(
@@ -238,6 +283,8 @@ class _TransactionDialogState extends State<TransactionDialog> {
         baseOffset: 0,
         extentOffset: _descriptionController.text.length,
       );
+    } else if (step == TxStep.category) {
+      _searchFocus.requestFocus();
     } else {
       _keyboardFocus.requestFocus();
     }
@@ -247,8 +294,9 @@ class _TransactionDialogState extends State<TransactionDialog> {
     final flow = _stepFlow;
     final index = flow.indexOf(_step);
 
-    if (_step == TxStep.category && _category == null) {
-      _category = _categories[_listIndex];
+    if (_step == TxStep.category) {
+      if (_categories.isEmpty) return;
+      _category = _categories[_listIndex.clamp(0, _categories.length - 1)];
     }
     if (_step == TxStep.fixedItem &&
         _fixedItem == null &&
@@ -335,6 +383,21 @@ class _TransactionDialogState extends State<TransactionDialog> {
     }
   }
 
+  void _onSearchChanged(String value) {
+    setState(() {
+      _search = value;
+      _step = TxStep.category;
+      _listIndex = 0;
+      _category = _categories.isEmpty ? null : _categories.first;
+    });
+  }
+
+  void _submitSearch() {
+    if (_categories.isEmpty) return;
+    _keyboardFocus.requestFocus();
+    _nextStep();
+  }
+
   void _handleKey(KeyEvent event) {
     if (event is! KeyDownEvent) return;
 
@@ -358,6 +421,15 @@ class _TransactionDialogState extends State<TransactionDialog> {
     }
 
     if (_currentListLength == 0) return;
+
+    final isArrow = key == LogicalKeyboardKey.arrowRight ||
+        key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown;
+
+    if (isArrow && _searchFocus.hasFocus) {
+      _keyboardFocus.requestFocus();
+    }
 
     final columns = _step == TxStep.category ? _gridColumns : 1;
 
@@ -540,18 +612,101 @@ class _TransactionDialogState extends State<TransactionDialog> {
                   _StepLabel(
                     label: 'Categoria',
                     active: _step == TxStep.category,
-                    hint: 'setas navegam, enter avança',
+                    hint: 'digite para buscar, enter avança',
                   ),
                   const SizedBox(height: 10),
-                  _CategoryGrid(
-                    categories: _categories,
-                    selected: _category,
-                    onSelect: (index) {
-                      setState(() => _step = TxStep.category);
-                      _applyListIndex(index);
-                      _keyboardFocus.requestFocus();
-                    },
+                  TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocus,
+                    onChanged: _onSearchChanged,
+                    onSubmitted: (_) => _submitSearch(),
+                    textInputAction: TextInputAction.done,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Buscar categoria',
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        size: 17,
+                        color: AppColors.textMuted,
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 38,
+                        minHeight: 38,
+                      ),
+                      suffixIcon: _search.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                                _searchFocus.requestFocus();
+                              },
+                              icon: const Icon(
+                                Icons.close,
+                                size: 15,
+                                color: AppColors.textMuted,
+                              ),
+                              splashRadius: 15,
+                            ),
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 11,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.field),
+                        borderSide: const BorderSide(
+                          color: AppColors.border,
+                          width: AppBorders.normal,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.field),
+                        borderSide: const BorderSide(
+                          color: AppColors.border,
+                          width: AppBorders.normal,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.field),
+                        borderSide: const BorderSide(
+                          color: AppColors.accent,
+                          width: AppBorders.selected,
+                        ),
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 10),
+                  if (_categories.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text(
+                        'Nenhuma categoria encontrada',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    )
+                  else
+                    _CategoryGrid(
+                      categories: _categories,
+                      selected: _category,
+                      onSelect: (index) {
+                        setState(() => _step = TxStep.category);
+                        _applyListIndex(index);
+                        _keyboardFocus.requestFocus();
+                      },
+                    ),
                   const SizedBox(height: 18),
                 ] else ...[
                   _StepLabel(

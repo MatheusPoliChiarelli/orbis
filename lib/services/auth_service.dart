@@ -13,6 +13,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    await _auth.setPersistence(Persistence.NONE);
     await _auth.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,

@@ -13,6 +13,9 @@ class CategoryRankingCard extends StatelessWidget {
     required this.categoryIds,
     required this.total,
     required this.subtitle,
+    this.title = 'Saídas por categoria',
+    this.emptyMessage = 'Sem saídas registradas neste período',
+    this.action,
   });
 
   final Map<String, double> byCategory;
@@ -20,6 +23,9 @@ class CategoryRankingCard extends StatelessWidget {
   final Map<String, String> categoryIds;
   final double total;
   final String subtitle;
+  final String title;
+  final String emptyMessage;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +33,11 @@ class CategoryRankingCard extends StatelessWidget {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return AppCard(
-      title: 'Despesas por categoria',
+      title: title,
       subtitle: subtitle,
+      trailing: action,
       child: entries.isEmpty
-          ? const EmptyHint(message: 'Sem despesas registradas neste período')
+          ? EmptyHint(message: emptyMessage)
           : Column(
               children: [
                 for (final entry in entries) ...[

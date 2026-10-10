@@ -21,9 +21,8 @@ class DayStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    final today = DateTime.now();
-    final isCurrentMonth =
-        today.year == month.year && today.month == month.month;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -35,18 +34,24 @@ class DayStrip extends StatelessWidget {
           child: Row(
             children: [
               for (var day = 1; day <= daysInMonth; day++)
-                Padding(
-                  padding: EdgeInsets.only(right: day == daysInMonth ? 0 : _gap),
-                  child: _DayCell(
-                    day: day,
-                    width: width,
-                    weekday: weekdayShort[
-                        DateTime(month.year, month.month, day).weekday - 1],
-                    selected: day == selectedDay,
-                    past: isCurrentMonth && day < today.day,
-                    today: isCurrentMonth && day == today.day,
-                    onTap: () => onSelect(day),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final date = DateTime(month.year, month.month, day);
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: day == daysInMonth ? 0 : _gap,
+                      ),
+                      child: _DayCell(
+                        day: day,
+                        width: width,
+                        weekday: weekdayShort[date.weekday - 1],
+                        selected: day == selectedDay,
+                        past: date.isBefore(today),
+                        today: date == today,
+                        onTap: () => onSelect(day),
+                      ),
+                    );
+                  },
                 ),
             ],
           ),
