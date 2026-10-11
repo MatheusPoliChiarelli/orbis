@@ -12,11 +12,14 @@ class DayStrip extends StatelessWidget {
     required this.month,
     required this.selectedDay,
     required this.onSelect,
+    this.borderColor,
+
   });
 
   final DateTime month;
   final int selectedDay;
   final ValueChanged<int> onSelect;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +52,7 @@ class DayStrip extends StatelessWidget {
                         past: date.isBefore(today),
                         today: date == today,
                         onTap: () => onSelect(day),
+                        borderColor: borderColor,
                       ),
                     );
                   },
@@ -70,7 +74,10 @@ class _DayCell extends StatefulWidget {
     required this.past,
     required this.today,
     required this.onTap,
+    this.borderColor,
   });
+
+  final Color? borderColor;
 
   final int day;
   final double width;
@@ -120,9 +127,13 @@ class _DayCellState extends State<_DayCell> {
                   : (widget.today
                       ? AppColors.accent
                       : (widget.past
-                          ? AppColors.border
+                          ? (widget.borderColor ?? AppColors.border)
                           : Colors.transparent)),
-              width: selected ? AppBorders.selected : AppBorders.normal,
+              width: selected || widget.today
+                  ? AppBorders.selected
+                  : (widget.past && widget.borderColor != null
+                      ? AppBorders.selected
+                      : AppBorders.normal),
             ),
           ),
           child: Column(

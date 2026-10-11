@@ -6,9 +6,14 @@ import '../utils/formatters.dart';
 import 'app_card.dart';
 
 class DaySummaryCards extends StatelessWidget {
-  const DaySummaryCards({super.key, required this.transactions});
+  const DaySummaryCards({
+    super.key,
+    required this.transactions,
+    this.borderColor,
+  });
 
   final List<Tx> transactions;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +38,7 @@ class DaySummaryCards extends StatelessWidget {
             value: expense,
             color: AppColors.expense,
             icon: Icons.arrow_downward,
+            borderColor: borderColor,
           ),
         ),
         const SizedBox(width: 14),
@@ -42,6 +48,7 @@ class DaySummaryCards extends StatelessWidget {
             value: income,
             color: AppColors.income,
             icon: Icons.arrow_upward,
+            borderColor: borderColor,
           ),
         ),
       ],
@@ -55,8 +62,11 @@ class _MetricCard extends StatelessWidget {
     required this.value,
     required this.color,
     required this.icon,
+    this.borderColor,
     this.signed = false,
   });
+
+  final Color? borderColor;
 
   final String label;
   final double value;
@@ -67,6 +77,7 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      borderColor: borderColor,
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

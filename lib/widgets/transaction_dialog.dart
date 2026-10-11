@@ -114,21 +114,20 @@ class _TransactionDialogState extends State<TransactionDialog> {
     }
     if (_isExpense) {
       if (_kind == ExpenseKind.fixed) {
-        return const [
-          TxStep.kind,
-          TxStep.fixedItem,
-          TxStep.amount,
-          TxStep.description,
-        ];
+        return const [TxStep.kind, TxStep.fixedItem, TxStep.amount];
       }
-      return const [
+      return [
         TxStep.kind,
         TxStep.category,
         TxStep.amount,
-        TxStep.description,
+        if (_showDescription) TxStep.description,
       ];
     }
-    return const [TxStep.category, TxStep.amount, TxStep.description];
+    return [
+      TxStep.category,
+      TxStep.amount,
+      if (_showDescription) TxStep.description,
+    ];
   }
 
   List<String> get _transferTargets =>
@@ -143,6 +142,12 @@ class _TransactionDialogState extends State<TransactionDialog> {
       TxStep.amount => 0,
       TxStep.description => 0,
     };
+  }
+
+  bool get _showDescription {
+    if (_type == TxType.transfer) return true;
+    if (_isExpense && _kind == ExpenseKind.fixed) return false;
+    return _category?.id == 'outros' || _category?.id == 'outras-entradas';
   }
 
   @override
@@ -518,7 +523,7 @@ class _TransactionDialogState extends State<TransactionDialog> {
                     ),
                     const Spacer(),
                     Text(
-                      '${widget.date.day} de ${monthLabel(widget.date).toLowerCase()}',
+                      '${widget.date.day.toString().padLeft(2, '0')}/${widget.date.month.toString().padLeft(2, '0')}/${widget.date.year}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -766,39 +771,33 @@ class _TransactionDialogState extends State<TransactionDialog> {
                     active: _step == TxStep.amount,
                   ),
                 ),
-                const SizedBox(height: 18),
-                _StepLabel(
-                  label: 'Descrição',
-                  active: _step == TxStep.description,
-                  hint: 'enter salva',
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _descriptionController,
-                  focusNode: _descriptionFocus,
-                  onTap: () => setState(() => _step = TxStep.description),
-                  onSubmitted: (_) => _nextStep(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                  decoration: _fieldDecoration(
-                    hint: 'Opcional',
+                if (_showDescription) ...[
+                  const SizedBox(height: 18),
+                  _StepLabel(
+                    label: 'Descrição',
                     active: _step == TxStep.description,
+                    hint: 'enter salva',
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _descriptionController,
+                    focusNode: _descriptionFocus,
+                    onTap: () => setState(() => _step = TxStep.description),
+                    onSubmitted: (_) => _nextStep(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: _fieldDecoration(
+                      hint: 'Opcional',
+                      active: _step == TxStep.description,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 22),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Expanded(
-                      child: Text(
-                        'esc fecha  ·  tab volta uma etapa',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text(
@@ -1016,13 +1015,6 @@ class _StepLabel extends StatelessWidget {
             letterSpacing: 0.3,
           ),
         ),
-        if (active) ...[
-          const SizedBox(width: 9),
-          Text(
-            hint,
-            style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted),
-          ),
-        ],
       ],
     );
   }

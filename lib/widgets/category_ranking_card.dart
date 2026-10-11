@@ -13,9 +13,10 @@ class CategoryRankingCard extends StatelessWidget {
     required this.categoryIds,
     required this.total,
     required this.subtitle,
-    this.title = 'Saídas por categoria',
-    this.emptyMessage = 'Sem saídas registradas neste período',
+    this.title = 'Gastos por categoria',
+    this.emptyMessage = 'Sem gastos registrados neste período',
     this.action,
+    this.borderColor,
   });
 
   final Map<String, double> byCategory;
@@ -26,6 +27,7 @@ class CategoryRankingCard extends StatelessWidget {
   final String title;
   final String emptyMessage;
   final Widget? action;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,7 @@ class CategoryRankingCard extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       trailing: action,
+      borderColor: borderColor,
       child: entries.isEmpty
           ? EmptyHint(message: emptyMessage)
           : Column(

@@ -9,13 +9,15 @@ import '../models/transaction.dart';
 import '../services/finance_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
-import '../widgets/account_glow.dart';
 import '../widgets/account_selector.dart';
-import '../widgets/category_breakdown_card.dart';
 import '../widgets/day_strip.dart';
 import '../widgets/day_summary_cards.dart';
 import '../widgets/transaction_dialog.dart';
 import '../widgets/transaction_list_card.dart';
+import '../widgets/calculator_panel.dart';
+import '../widgets/category_ranking_card.dart';
+import '../widgets/category_filter_chips.dart';
+import '../data/account_border.dart';
 
 final _digitKeys = <LogicalKeyboardKey, String>{
   LogicalKeyboardKey.digit0: '0',
@@ -60,10 +62,13 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
 
   String _dayBuffer = '';
   Timer? _dayTimer;
+  bool _showCalculator = false;
 
   bool get _isGeneral => _accountId == kGeneralAccountId;
+    Color? get _border => accountBorder(_accountId);
 
   int get _daysInMonth => DateTime(_month.year, _month.month + 1, 0).day;
+  ExpenseFilter _expenseFilter = ExpenseFilter.all;
 
   @override
   void initState() {
@@ -88,6 +93,15 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
     if (focused is EditableText) return false;
 
     final key = event.logicalKey;
+
+    if (_showCalculator) return false;
+
+    if (key == LogicalKeyboardKey.add ||
+        key == LogicalKeyboardKey.numpadAdd ||
+        key == LogicalKeyboardKey.equal) {
+      setState(() => _showCalculator = true);
+      return true;
+    }
 
     final accountId = _accountKeys[key];
     if (accountId != null) {
@@ -237,11 +251,11 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                 budgetSnap.data ?? MonthBudget.empty(monthKey(_month));
             final dayTx = _visibleTransactions(transactions);
 
-            return AccountGlow(
-              accountId: _accountId,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            return Stack(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   _Header(
                     month: _month,
                     accountId: _accountId,
@@ -251,6 +265,7 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                     onSelectAccount: (id) => setState(() => _accountId = id),
                     onNewIncome: () => _openDialog(type: TxType.income),
                     onNewExpense: () => _openDialog(type: TxType.expense),
+                    borderColor: _border,
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(28, 4, 28, 18),
@@ -258,6 +273,7 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                       month: _month,
                       selectedDay: _selectedDay,
                       onSelect: _selectDay,
+                      borderColor: _border,
                     ),
                   ),
                   Expanded(
@@ -269,11 +285,15 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            DaySummaryCards(transactions: dayTx),
+                            DaySummaryCards(
+                              transactions: dayTx,
+                              borderColor: _border,
+                            ),
                             const SizedBox(height: 14),
                             TransactionListCard(
                               transactions: dayTx,
                               showAccountBadge: _isGeneral,
+                              borderColor: _border,
                               onEdit: (tx) => _openDialog(
                                 type: tx.type,
                                 existing: tx,
@@ -281,14 +301,110 @@ class _VariableExpensesScreenState extends State<VariableExpensesScreen> {
                               onDelete: _confirmDelete,
                             ),
                             const SizedBox(height: 14),
-                            CategoryBreakdownCard(transactions: dayTx),
+                            Builder(
+                              builder: (context) {
+                                final expenses = <String, double>{};
+                                final expenseColors = <String, int>{};
+                                final expenseIds = <String, String>{};
+                                final incomes = <String, double>{};
+                                final incomeColors = <String, int>{};
+                                final incomeIds = <String, String>{};
+
+                                var expenseTotal = 0.0;
+                                var incomeTotal = 0.0;
+
+                                for (final tx in dayTx) {
+                                  if (tx.isTransfer) continue;
+                                  if (tx.categoryId == 'investimentos') {
+                                    continue;
+                                  }
+
+                                  if (tx.isIncome) {
+                                    incomes[tx.categoryName] =
+                                        (incomes[tx.categoryName] ?? 0) +
+                                            tx.amount;
+                                    incomeColors[tx.categoryName] =
+                                        tx.categoryColor.toARGB32();
+                                    incomeIds[tx.categoryName] = tx.categoryId;
+                                    incomeTotal += tx.amount;
+                                  } else {
+                                    final keep = switch (_expenseFilter) {
+                                      ExpenseFilter.all => true,
+                                      ExpenseFilter.fixed => tx.isFixed,
+                                      ExpenseFilter.variable => !tx.isFixed,
+                                    };
+                                    if (!keep) continue;
+
+                                    expenses[tx.categoryName] =
+                                        (expenses[tx.categoryName] ?? 0) +
+                                            tx.amount;
+                                    expenseColors[tx.categoryName] =
+                                        tx.categoryColor.toARGB32();
+                                    expenseIds[tx.categoryName] =
+                                        tx.categoryId;
+                                    expenseTotal += tx.amount;
+                                  }
+                                }
+
+                                final label =
+                                    '$_selectedDay de ${monthLabel(_month).toLowerCase()}';
+
+                                return IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        child: CategoryRankingCard(
+                                          byCategory: expenses,
+                                          categoryColors: expenseColors,
+                                          categoryIds: expenseIds,
+                                          total: expenseTotal,
+                                          subtitle: label,
+                                          action: CategoryFilterChips(
+                                            selected: _expenseFilter,
+                                            onSelect: (value) => setState(
+                                              () => _expenseFilter = value,
+                                            ),
+                                          ),
+                                          borderColor: _border,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: CategoryRankingCard(
+                                          title: 'Entradas por categoria',
+                                          emptyMessage:
+                                              'Sem entradas registradas neste dia',
+                                          byCategory: incomes,
+                                          categoryColors: incomeColors,
+                                          categoryIds: incomeIds,
+                                          total: incomeTotal,
+                                          subtitle: label,
+                                          borderColor: _border,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                  ],
+                ),
+                if (_showCalculator)
+                  Positioned(
+                    right: 28,
+                    bottom: 28,
+                    child: CalculatorPanel(
+                      onClose: () => setState(() => _showCalculator = false),
+                    ),
+                  ),
+              ],
             );
           },
         );
@@ -307,6 +423,7 @@ class _Header extends StatelessWidget {
     required this.onSelectAccount,
     required this.onNewIncome,
     required this.onNewExpense,
+    required this.borderColor,
   });
 
   final DateTime month;
@@ -317,6 +434,7 @@ class _Header extends StatelessWidget {
   final ValueChanged<String> onSelectAccount;
   final VoidCallback onNewIncome;
   final VoidCallback onNewExpense;
+  final Color? borderColor;
 
   double _balanceFor(String id) {
     if (id == kGeneralAccountId) {

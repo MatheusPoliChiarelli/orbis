@@ -49,17 +49,32 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
       return true;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
-      setState(() => _year++);
+      _changeMonth(1);
       return true;
     }
     if (key == LogicalKeyboardKey.arrowLeft) {
-      setState(() => _year--);
+      _changeMonth(-1);
       return true;
     }
 
     return false;
   }
 
+  void _changeMonth(int delta) {
+    setState(() {
+      var month = _month + delta;
+      var year = _year;
+      if (month > 12) {
+        month = 1;
+        year++;
+      } else if (month < 1) {
+        month = 12;
+        year--;
+      }
+      _month = month;
+      _year = year;
+    });
+  }
 
   Future<void> _confirmDelete(FixedCost item) async {
     final confirmed = await showDialog<bool>(
@@ -147,13 +162,13 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
                     children: [
                       _Arrow(
                         icon: Icons.chevron_left,
-                        onTap: () => setState(() => _year--),
+                        onTap: () => _changeMonth(-1),
                       ),
                       const SizedBox(width: 4),
                       SizedBox(
-                        width: 150,
+                        width: 210,
                         child: Text(
-                          '$_year',
+                          '${monthNames[_month - 1]} ${_year}',
                           textAlign: TextAlign.center,
                           style: AppText.serif(size: 26),
                         ),
@@ -161,25 +176,24 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
                       const SizedBox(width: 4),
                       _Arrow(
                         icon: Icons.chevron_right,
-                        onTap: () => setState(() => _year++),
+                        onTap: () => _changeMonth(1),
                       ),
                       const Spacer(),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      Row(
                         children: [
                           const Text(
-                            'Custo fixo do ano',
+                            'Gastos fixos do ano:',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 15,
                               color: AppColors.textMuted,
                               letterSpacing: 0.3,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(width: 12),
                           Text(
                             formatMoney(yearTotal),
                             style: AppText.money(
-                              size: 22,
+                              size: 18,
                               weight: FontWeight.w600,
                               color: AppColors.textPrimary,
                             ),
@@ -319,7 +333,7 @@ class _MonthTabs extends StatelessWidget {
         for (var i = 1; i <= 12; i++) ...[
           Expanded(
             child: _MonthTab(
-              label: monthNames[i - 1].substring(0, 3),
+              label: monthNames[i - 1],
               total: totals[i - 1],
               selected: i == selected,
               onTap: () => onSelect(i),
@@ -367,11 +381,11 @@ class _MonthTabState extends State<_MonthTab> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.accentSoft
+                ? AppColors.accent
                 : (_hover ? AppColors.surfaceRaised : AppColors.surface),
             borderRadius: BorderRadius.circular(AppRadius.field),
             border: Border.all(
-              color: selected ? AppColors.borderAccent : AppColors.border,
+              color: selected ? AppColors.accent : AppColors.border,
               width: selected ? AppBorders.selected : AppBorders.normal,
             ),
           ),
@@ -379,18 +393,21 @@ class _MonthTabState extends State<_MonthTab> {
             children: [
               Text(
                 widget.label,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 10.5,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  color: selected ? AppColors.accent : AppColors.textSecondary,
+                  color:
+                      selected ? AppColors.onAccent : AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 3),
               Text(
                 formatMoneyPlain(widget.total),
                 style: AppText.money(
-                  size: 10.5,
-                  color: selected ? AppColors.textPrimary : AppColors.textMuted,
+                  size: 10,
+                  weight: selected ? FontWeight.w600 : FontWeight.w400,
+                  color: selected ? AppColors.onAccent : AppColors.textMuted,
                 ),
               ),
             ],
@@ -610,15 +627,17 @@ class _LineState extends State<_Line> {
               style: AppText.money(
                 size: widget.bold ? 13.5 : 12.5,
                 weight: widget.bold ? FontWeight.w600 : FontWeight.w500,
-                color: widget.paid && !widget.skipped
-                    ? const Color(0xFF3FAE6B)
-                    : (widget.bold
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary),
+                color: widget.skipped
+                    ? AppColors.accent
+                    : (widget.paid
+                        ? const Color(0xFF3FAE6B)
+                        : (widget.bold
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary)),
               ),
             ),
             SizedBox(
-              width: widget.onAddChild == null ? 32 : 88,
+              width: widget.onToggleSkip == null ? 32 : 60,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -630,13 +649,6 @@ class _LineState extends State<_Line> {
                           : 'Não pagar neste mês',
                       visible: _hover,
                       onTap: widget.onToggleSkip!,
-                    ),
-                  if (widget.onAddChild != null)
-                    _RowAction(
-                      icon: Icons.add,
-                      tooltip: 'Adicionar dentro',
-                      visible: _hover,
-                      onTap: widget.onAddChild!,
                     ),
                   _RowAction(
                     icon: Icons.delete_outline,

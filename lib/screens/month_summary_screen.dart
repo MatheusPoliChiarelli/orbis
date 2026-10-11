@@ -226,14 +226,10 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                                     icon: Icons.arrow_upward,
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
+                                const SizedBox(width: 14),
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Gastos fixas',
+                                    label: 'Gastos fixos',
                                     value: stats.expenseFixed,
                                     color: AppColors.accent,
                                     icon: Icons.push_pin_outlined,
@@ -388,12 +384,15 @@ class _BigMetric extends StatelessWidget {
             children: [
               Icon(icon, size: 15, color: color),
               const SizedBox(width: 9),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accent,
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.accent,
+                  ),
                 ),
               ),
             ],
@@ -402,7 +401,7 @@ class _BigMetric extends StatelessWidget {
           Text(
             formatMoney(value),
             style: AppText.money(
-              size: 26,
+              size: 21,
               color: color,
               weight: FontWeight.w600,
             ),

@@ -22,6 +22,7 @@ class TransactionListCard extends StatefulWidget {
     this.showFilters = true,
     this.amountColor,
     this.amountAtEnd = false,
+    this.borderColor,
   });
 
   final List<Tx> transactions;
@@ -37,6 +38,9 @@ class TransactionListCard extends StatefulWidget {
 
   /// Move o valor para o fim da linha, depois dos badges.
   final bool amountAtEnd;
+
+  /// Cor da borda quando uma conta está selecionada.
+  final Color? borderColor;
 
   @override
   State<TransactionListCard> createState() => _TransactionListCardState();
@@ -118,6 +122,7 @@ class _TransactionListCardState extends State<TransactionListCard> {
     return AppCard(
       title: 'Lançamentos do dia',
       trailing: widget.showFilters ? filters : null,
+      borderColor: widget.borderColor,
       child: content,
     );
   }

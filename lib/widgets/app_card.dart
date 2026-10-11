@@ -11,6 +11,7 @@ class AppCard extends StatelessWidget {
     this.trailing,
     this.padding = const EdgeInsets.all(18),
     this.raised = false,
+    this.borderColor,
   });
 
   final Widget child;
@@ -20,6 +21,9 @@ class AppCard extends StatelessWidget {
   final EdgeInsets padding;
   final bool raised;
 
+  /// Cor da borda quando uma conta está selecionada.
+  final Color? borderColor;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -28,8 +32,10 @@ class AppCard extends StatelessWidget {
         color: raised ? AppColors.surfaceRaised : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: AppColors.border,
-          width: AppBorders.normal,
+          color: borderColor ?? AppColors.border,
+          width: borderColor != null
+              ? AppBorders.selected
+              : AppBorders.normal,
         ),
       ),
       child: Column(
