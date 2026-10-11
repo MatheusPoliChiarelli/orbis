@@ -129,8 +129,8 @@ const expenseCategories = <CategoryInfo>[
   CategoryInfo(
     id: 'outros',
     name: 'Outros',
-    color: Color(0xFF9AA1A8),
-    icon: Icons.more_horiz_outlined,
+    color: Color(0xFF888780),
+    icon: Icons.category_outlined,
     isIncome: false,
   ),
 ];
@@ -153,6 +153,22 @@ const incomeCategories = <CategoryInfo>[
   ),
 
   CategoryInfo(
+    id: 'vale-alimentacao',
+    name: 'Vale alimentação',
+    color: Color(0xFF8FD45F),
+    icon: Icons.restaurant_outlined,
+    isIncome: true,
+  ),
+
+  CategoryInfo(
+    id: 'resgate-investimentos',
+    name: 'Investimentos',
+    color: Color(0xFF6BD4C4),
+    icon: Icons.savings_outlined,
+    isIncome: true,
+  ),
+
+  CategoryInfo(
     id: 'freelance',
     name: 'Freelance',
     color: Color(0xFF6BD4C4),
@@ -166,32 +182,12 @@ const incomeCategories = <CategoryInfo>[
     icon: Icons.storefront_outlined,
     isIncome: true,
   ),
-  CategoryInfo(
-    id: 'rendimentos',
-    name: 'Rendimentos',
-    color: Color(0xFF4DA3FF),
-    icon: Icons.savings_outlined,
-    isIncome: true,
-  ),
-  CategoryInfo(
-    id: 'bolsa',
-    name: 'Bolsa',
-    color: Color(0xFF9B8CFF),
-    icon: Icons.school_outlined,
-    isIncome: true,
-  ),
-  CategoryInfo(
-    id: 'reembolso',
-    name: 'Reembolso',
-    color: Color(0xFF5FC9D4),
-    icon: Icons.undo_outlined,
-    isIncome: true,
-  ),
+ 
   CategoryInfo(
     id: 'outras-entradas',
-    name: 'Outras entradas',
+    name: 'Outros',
     color: Color(0xFF9AA1A8),
-    icon: Icons.more_horiz_outlined,
+    icon: Icons.category_outlined,
     isIncome: true,
   ),
 ];

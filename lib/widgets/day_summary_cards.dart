@@ -16,13 +16,14 @@ class DaySummaryCards extends StatelessWidget {
     var expense = 0.0;
     for (final tx in transactions) {
       if (tx.isTransfer) continue;
+      if (tx.categoryId == 'investimentos') continue;
       if (tx.isIncome) {
         income += tx.amount;
       } else {
         expense += tx.amount;
       }
     }
-    final balance = income - expense;
+
 
     return Row(
       children: [
@@ -41,16 +42,6 @@ class DaySummaryCards extends StatelessWidget {
             value: income,
             color: AppColors.income,
             icon: Icons.arrow_upward,
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: _MetricCard(
-            label: 'Balanço',
-            value: balance,
-            color: balance < 0 ? AppColors.expense : AppColors.income,
-            icon: Icons.swap_vert,
-            signed: true,
           ),
         ),
       ],

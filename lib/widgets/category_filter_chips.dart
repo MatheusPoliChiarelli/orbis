@@ -23,7 +23,7 @@ class CategoryFilterChips extends StatelessWidget {
           _Chip(
             label: switch (filter) {
               ExpenseFilter.all => 'Todas',
-              ExpenseFilter.fixed => 'Fixos',
+              ExpenseFilter.fixed => 'Fixas',
               ExpenseFilter.variable => 'Variáveis',
             },
             selected: selected == filter,

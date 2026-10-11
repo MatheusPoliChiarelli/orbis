@@ -8,9 +8,11 @@ class YearStats {
     required this.expense,
     required this.expenseFixed,
     required this.expenseVariable,
+    required this.investment,
     required this.count,
     required this.monthlyIncome,
     required this.monthlyExpense,
+    required this.monthlyInvestment,
     required this.byCategory,
     required this.categoryColors,
     required this.categoryIds,
@@ -22,14 +24,21 @@ class YearStats {
   });
 
   final double income;
+
+  /// Saídas que não são investimento.
   final double expense;
   final double expenseFixed;
   final double expenseVariable;
+
+  /// Total alocado em investimentos. Fica fora das métricas.
+  final double investment;
+
   final int count;
 
   /// Índice 0 é janeiro.
   final List<double> monthlyIncome;
   final List<double> monthlyExpense;
+  final List<double> monthlyInvestment;
 
   final Map<String, double> byCategory;
   final Map<String, int> categoryColors;
@@ -48,6 +57,8 @@ class YearStats {
 
   double get monthlyAverage => expense / 12;
 
+  double get investmentAverage => investment / 12;
+
   String? get topCategory {
     if (byCategory.isEmpty) return null;
     final entries = byCategory.entries.toList()
@@ -65,6 +76,29 @@ class YearStats {
       }
     }
     return best < 0 ? null : best;
+  }
+
+  int? get topInvestmentMonth {
+    var best = -1;
+    var bestValue = 0.0;
+    for (var i = 0; i < monthlyInvestment.length; i++) {
+      if (monthlyInvestment[i] > bestValue) {
+        bestValue = monthlyInvestment[i];
+        best = i;
+      }
+    }
+    return best < 0 ? null : best;
+  }
+
+  /// Investimento acumulado mês a mês.
+  List<double> get cumulativeInvestment {
+    final result = <double>[];
+    var running = 0.0;
+    for (final value in monthlyInvestment) {
+      running += value;
+      result.add(running);
+    }
+    return result;
   }
 
   /// Patrimônio acumulado mês a mês, partindo do saldo inicial de janeiro.
@@ -86,6 +120,7 @@ class YearStats {
   }) {
     final monthlyIncome = List<double>.filled(12, 0);
     final monthlyExpense = List<double>.filled(12, 0);
+    final monthlyInvestment = List<double>.filled(12, 0);
     final byCategory = <String, double>{};
     final categoryColors = <String, int>{};
     final categoryIds = <String, String>{};
@@ -100,15 +135,23 @@ class YearStats {
     var expense = 0.0;
     var expenseFixed = 0.0;
     var expenseVariable = 0.0;
+    var investment = 0.0;
     var count = 0;
 
     for (final tx in transactions) {
       if (!isGeneral && tx.accountId != accountId) continue;
       if (tx.isTransfer) continue;
 
-      count++;
       final index = tx.date.month - 1;
       if (index < 0 || index > 11) continue;
+
+      if (tx.categoryId == 'investimentos') {
+        investment += tx.amount;
+        monthlyInvestment[index] += tx.amount;
+        continue;
+      }
+
+      count++;
 
       if (tx.isIncome) {
         income += tx.amount;
@@ -119,13 +162,13 @@ class YearStats {
         incomeCategoryIds[tx.categoryName] = tx.categoryId;
       } else {
         expense += tx.amount;
+        monthlyExpense[index] += tx.amount;
         if (tx.isFixed) {
           expenseFixed += tx.amount;
           fixedCategoryNames.add(tx.categoryName);
         } else {
           expenseVariable += tx.amount;
         }
-        monthlyExpense[index] += tx.amount;
         byCategory[tx.categoryName] =
             (byCategory[tx.categoryName] ?? 0) + tx.amount;
         categoryColors[tx.categoryName] = tx.categoryColor.toARGB32();
@@ -150,9 +193,11 @@ class YearStats {
       expense: expense,
       expenseFixed: expenseFixed,
       expenseVariable: expenseVariable,
+      investment: investment,
       count: count,
       monthlyIncome: monthlyIncome,
       monthlyExpense: monthlyExpense,
+      monthlyInvestment: monthlyInvestment,
       byCategory: byCategory,
       categoryColors: categoryColors,
       categoryIds: categoryIds,

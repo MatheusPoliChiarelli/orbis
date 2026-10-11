@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/transaction.dart';
 import '../theme/app_theme.dart';
-import '../utils/formatters.dart';
 import 'app_card.dart';
 import 'transaction_list_card.dart';
 
@@ -14,11 +13,17 @@ class AllTransactionsCard extends StatefulWidget {
     required this.showAccountBadge,
     required this.onEdit,
     required this.onDelete,
+    this.showFilters = true,
+    this.amountColor,
+    this.amountAtEnd = false,
   });
 
   final List<Tx> transactions;
   final double balance;
   final bool showAccountBadge;
+  final bool showFilters;
+  final Color? amountColor;
+  final bool amountAtEnd;
   final ValueChanged<Tx> onEdit;
   final ValueChanged<Tx> onDelete;
 
@@ -31,12 +36,8 @@ class _AllTransactionsCardState extends State<AllTransactionsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final count = widget.transactions.length;
-
     return AppCard(
       title: 'Todos os lançamentos',
-      subtitle:
-          '$count no período, movimento de ${formatSigned(widget.balance)}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -51,6 +52,9 @@ class _AllTransactionsCardState extends State<AllTransactionsCard> {
               showAccountBadge: widget.showAccountBadge,
               showDate: true,
               bare: true,
+              showFilters: widget.showFilters,
+              amountColor: widget.amountColor,
+              amountAtEnd: widget.amountAtEnd,
               onEdit: widget.onEdit,
               onDelete: widget.onDelete,
             ),

@@ -19,7 +19,7 @@ class NavItem {
 const navItems = <NavItem>[
   NavItem(
     id: 'variaveis',
-    label: 'Gastos totais',
+    label: 'Lançamentos',
     icon: Icons.receipt_long_outlined,
     section: NavSection.financas,
   ),
@@ -39,6 +39,12 @@ const navItems = <NavItem>[
     id: 'fixos',
     label: 'Gastos fixos',
     icon: Icons.push_pin_outlined,
+    section: NavSection.financas,
+  ),
+  NavItem(
+    id: 'investimentos',
+    label: 'Investimentos',
+    icon: Icons.trending_up_outlined,
     section: NavSection.financas,
   ),
   NavItem(

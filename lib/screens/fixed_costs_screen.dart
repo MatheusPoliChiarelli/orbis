@@ -127,9 +127,11 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
 
         final current = monthly[_month - 1];
         final yearTotal = monthly.fold<double>(0, (a, m) => a + m.total);
-
+            final monthKeyOf =
+                '$_year-${_month.toString().padLeft(2, '0')}';
             final paidTotal = current.parents
                 .where((item) => paid.contains(item.id))
+                .where((item) => !item.isSkipped(monthKeyOf))
                 .fold<double>(0, (a, item) => a + current.amountOf(item));
             final pendingTotal = current.total - paidTotal;
 
@@ -257,6 +259,8 @@ class _FixedCostsScreenState extends State<FixedCostsScreen> {
                                       item: item,
                                       amount: current.amountOf(item),
                                       paid: paid.contains(item.id),
+                                      skipped: item.isSkipped(monthKeyOf),
+                                      monthKey: monthKeyOf,
                                       children:
                                           current.childrenByParent[item.id] ??
                                               const [],
@@ -402,6 +406,8 @@ class _ItemRow extends StatelessWidget {
     required this.item,
     required this.amount,
     required this.paid,
+    required this.skipped,
+    required this.monthKey,
     required this.children,
     required this.year,
     required this.onDelete,
@@ -410,6 +416,8 @@ class _ItemRow extends StatelessWidget {
   final FixedCost item;
   final double amount;
   final bool paid;
+  final bool skipped;
+  final String monthKey;
   final List<FixedCost> children;
   final int year;
   final ValueChanged<FixedCost> onDelete;
@@ -423,6 +431,12 @@ class _ItemRow extends StatelessWidget {
           name: item.name,
           amount: amount,
           paid: paid,
+          skipped: skipped,
+          onToggleSkip: () => FinanceService.toggleSkippedMonth(
+            id: item.id,
+            monthKey: monthKey,
+            skipped: !skipped,
+          ),
           period: _periodLabel(item),
           bold: true,
           onEdit: () => showFixedCostDialog(
@@ -502,12 +516,16 @@ class _Line extends StatefulWidget {
     required this.bold,
     required this.onEdit,
     required this.onDelete,
+    this.skipped = false,
+    this.onToggleSkip,
     this.onAddChild,
   });
 
   final String name;
   final double amount;
   final bool paid;
+  final bool skipped;
+  final VoidCallback? onToggleSkip;
   final String? period;
   final bool bold;
   final VoidCallback onEdit;
@@ -533,13 +551,17 @@ class _LineState extends State<_Line> {
           children: [
             if (widget.bold) ...[
               Icon(
-                widget.paid
-                    ? Icons.check_circle
-                    : Icons.radio_button_unchecked,
+                widget.skipped
+                    ? Icons.block
+                    : (widget.paid
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked),
                 size: 15,
-                color: widget.paid
-                    ? const Color(0xFF3FAE6B)
-                    : AppColors.textMuted,
+                color: widget.skipped
+                    ? AppColors.textMuted
+                    : (widget.paid
+                        ? const Color(0xFF3FAE6B)
+                        : AppColors.textMuted),
               ),
               const SizedBox(width: 10),
             ],
@@ -588,7 +610,7 @@ class _LineState extends State<_Line> {
               style: AppText.money(
                 size: widget.bold ? 13.5 : 12.5,
                 weight: widget.bold ? FontWeight.w600 : FontWeight.w500,
-                color: widget.paid
+                color: widget.paid && !widget.skipped
                     ? const Color(0xFF3FAE6B)
                     : (widget.bold
                         ? AppColors.textPrimary
@@ -596,10 +618,19 @@ class _LineState extends State<_Line> {
               ),
             ),
             SizedBox(
-              width: widget.onAddChild == null ? 32 : 60,
+              width: widget.onAddChild == null ? 32 : 88,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (widget.onToggleSkip != null)
+                    _RowAction(
+                      icon: widget.skipped ? Icons.undo : Icons.block,
+                      tooltip: widget.skipped
+                          ? 'Voltar a cobrar neste mês'
+                          : 'Não pagar neste mês',
+                      visible: _hover,
+                      onTap: widget.onToggleSkip!,
+                    ),
                   if (widget.onAddChild != null)
                     _RowAction(
                       icon: Icons.add,

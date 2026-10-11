@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/accounts.dart';
+import '../data/categories.dart';
 import '../models/transaction.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
@@ -18,6 +19,9 @@ class TransactionListCard extends StatefulWidget {
     this.showAccountBadge = false,
     this.showDate = false,
     this.bare = false,
+    this.showFilters = true,
+    this.amountColor,
+    this.amountAtEnd = false,
   });
 
   final List<Tx> transactions;
@@ -26,7 +30,13 @@ class TransactionListCard extends StatefulWidget {
   final bool showAccountBadge;
   final bool showDate;
   final bool bare;
+  final bool showFilters;
 
+  /// Força uma cor no valor, ignorando o tipo do lançamento.
+  final Color? amountColor;
+
+  /// Move o valor para o fim da linha, depois dos badges.
+  final bool amountAtEnd;
 
   @override
   State<TransactionListCard> createState() => _TransactionListCardState();
@@ -77,12 +87,14 @@ class _TransactionListCardState extends State<TransactionListCard> {
                   tx: tx,
                   showAccountBadge: widget.showAccountBadge,
                   showDate: widget.showDate,
+                  forcedColor: widget.amountColor,
+                  amountAtEnd: widget.amountAtEnd,
                   onEdit: () => widget.onEdit(tx),
                   onDelete: () => widget.onDelete(tx),
                 ),
                 if (tx != list.last)
                   const Divider(
-                    height: 18,
+                    height: 14,
                     thickness: AppBorders.normal,
                     color: AppColors.border,
                   ),
@@ -94,8 +106,10 @@ class _TransactionListCardState extends State<TransactionListCard> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          filters,
-          const SizedBox(height: 16),
+          if (widget.showFilters) ...[
+            filters,
+            const SizedBox(height: 16),
+          ],
           content,
         ],
       );
@@ -103,7 +117,7 @@ class _TransactionListCardState extends State<TransactionListCard> {
 
     return AppCard(
       title: 'Lançamentos do dia',
-      trailing: filters,
+      trailing: widget.showFilters ? filters : null,
       child: content,
     );
   }
@@ -199,6 +213,8 @@ class _TxRow extends StatefulWidget {
     required this.tx,
     required this.showAccountBadge,
     required this.showDate,
+    required this.forcedColor,
+    required this.amountAtEnd,
     required this.onEdit,
     required this.onDelete,
   });
@@ -206,6 +222,8 @@ class _TxRow extends StatefulWidget {
   final Tx tx;
   final bool showAccountBadge;
   final bool showDate;
+  final Color? forcedColor;
+  final bool amountAtEnd;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -220,11 +238,35 @@ class _TxRowState extends State<_TxRow> {
   Widget build(BuildContext context) {
     final tx = widget.tx;
 
-    final amountColor = tx.isTransfer
-        ? AppColors.textSecondary
-        : (tx.isIncome ? AppColors.income : AppColors.expense);
+    final amountColor = widget.forcedColor ??
+        (tx.isTransfer
+            ? AppColors.textSecondary
+            : (tx.isIncome ? AppColors.income : AppColors.expense));
 
-    final prefix = tx.isTransfer ? '' : (tx.isIncome ? '+' : '-');
+    final prefix = widget.forcedColor != null
+        ? ''
+        : (tx.isTransfer ? '' : (tx.isIncome ? '+' : '-'));
+
+    final showDescription = (tx.categoryId == 'outros' ||
+            tx.categoryId == 'outras-entradas') &&
+        tx.description.isNotEmpty;
+
+    final date =
+        '${tx.date.day.toString().padLeft(2, '0')}/${tx.date.month.toString().padLeft(2, '0')}/${tx.date.year}';
+
+    final subtitleParts = <String>[
+      if (widget.showDate) date,
+      if (showDescription) tx.description,
+    ];
+
+    final amount = Text(
+      '$prefix ${formatMoney(tx.amount)}',
+      style: AppText.money(
+        size: 13.5,
+        color: amountColor,
+        weight: FontWeight.w500,
+      ),
+    );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -232,96 +274,102 @@ class _TxRowState extends State<_TxRow> {
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         onTap: widget.onEdit,
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: tx.categoryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Container(
-                width: 7,
-                height: 7,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
+                  color: tx.categoryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(
+                  categoryById(tx.categoryId)?.icon ?? Icons.circle,
+                  size: 16,
                   color: tx.categoryColor,
-                  shape: BoxShape.circle,
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tx.description.isEmpty ? tx.categoryName : tx.description,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
+              const SizedBox(width: 14),
+              SizedBox(
+                width: 210,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      tx.categoryName,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
+                    if (subtitleParts.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        widget.showDate
-                            ? '${tx.date.day.toString().padLeft(2, '0')} ${monthLabel(tx.date).substring(0, 3).toLowerCase()}'
-                            : tx.categoryName,
+                        subtitleParts.join('  ·  '),
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 11.5,
                           color: AppColors.textMuted,
                         ),
                       ),
-                      if (widget.showAccountBadge) ...[
-                        const SizedBox(width: 8),
-                        AccountBadge(accountId: tx.accountId, dense: true),
-                        if (tx.isTransfer && tx.toAccountId != null) ...[
-                          const SizedBox(width: 5),
-                          const Icon(
-                            Icons.arrow_forward,
-                            size: 11,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 5),
-                          AccountBadge(
-                            accountId: tx.toAccountId!,
-                            dense: true,
-                          ),
-                        ],
-                      ],
                     ],
+                  ],
+                ),
+              ),
+              if (!widget.amountAtEnd) ...[
+                const SizedBox(width: 20),
+                amount,
+              ],
+              const Spacer(),
+              if (widget.showAccountBadge) ...[
+                AccountBadge(accountId: tx.accountId),
+                if (tx.isTransfer && tx.toAccountId != null) ...[
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.arrow_forward,
+                    size: 12,
+                    color: AppColors.textMuted,
                   ),
+                  const SizedBox(width: 6),
+                  AccountBadge(accountId: tx.toAccountId!),
                 ],
-              ),
-            ),
-            Text(
-              '$prefix${formatMoney(tx.amount)}',
-              style: AppText.money(
-                size: 13.5,
-                color: amountColor,
-                weight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(
-              width: 34,
-              child: _hover
-                  ? IconButton(
-                      onPressed: widget.onDelete,
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 16,
-                        color: AppColors.textMuted,
+                if (widget.amountAtEnd) const SizedBox(width: 16),
+              ],
+              if (widget.amountAtEnd) amount,
+              SizedBox(
+                width: 36,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 120),
+                    opacity: _hover ? 1 : 0,
+                    child: IgnorePointer(
+                      ignoring: !_hover,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: widget.onDelete,
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.close,
+                              size: 15,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
                       ),
-                      splashRadius: 16,
-                      tooltip: 'Excluir',
-                    )
-                  : null,
-            ),
-          ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

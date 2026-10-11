@@ -9,6 +9,7 @@ class FixedCost {
     required this.endMonth,
     this.parentId,
     this.order = 0,
+    this.skippedMonths = const [],
   });
 
   final String id;
@@ -27,6 +28,11 @@ class FixedCost {
   final int order;
 
   bool get isChild => parentId != null;
+  /// Meses em que este item não é cobrado, no formato "2026-03".
+  final List<String> skippedMonths;
+
+
+  bool isSkipped(String key) => skippedMonths.contains(key);
 
   /// Verdadeiro se o item existe no mês informado.
   bool activeIn(String key) {
@@ -45,6 +51,10 @@ class FixedCost {
       endMonth: data['endMonth'] as String?,
       parentId: data['parentId'] as String?,
       order: (data['order'] as num?)?.toInt() ?? 0,
+      skippedMonths: (data['skippedMonths'] as List?)
+              ?.map((v) => v.toString())
+              .toList() ??
+          const [],
     );
   }
 
@@ -56,6 +66,7 @@ class FixedCost {
       'endMonth': endMonth,
       'parentId': parentId,
       'order': order,
+      'skippedMonths': skippedMonths,
     };
   }
 
@@ -69,6 +80,7 @@ class FixedCost {
     bool clearStart = false,
     bool clearEnd = false,
     bool clearParent = false,
+    List<String>? skippedMonths,
   }) {
     return FixedCost(
       id: id,
@@ -78,6 +90,7 @@ class FixedCost {
       endMonth: clearEnd ? null : (endMonth ?? this.endMonth),
       parentId: clearParent ? null : (parentId ?? this.parentId),
       order: order ?? this.order,
+      skippedMonths: skippedMonths ?? this.skippedMonths,
     );
   }
 }
@@ -102,7 +115,10 @@ class FixedCostMonth {
   }
 
   double get total {
-    return parents.fold<double>(0, (sum, item) => sum + amountOf(item));
+    return parents.fold<double>(
+      0,
+      (sum, item) => item.isSkipped(monthKey) ? sum : sum + amountOf(item),
+    );
   }
 
   factory FixedCostMonth.build({

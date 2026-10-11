@@ -70,7 +70,15 @@ class BarChartCard extends StatelessWidget {
                       strokeWidth: 0.5,
                     ),
                   ),
-                  borderData: FlBorderData(show: false),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: const Border(
+                      bottom: BorderSide(
+                        color: AppColors.border,
+                        width: 1,
+                      ),
+                    ),
+                  ),
                   titlesData: _titles(maxY),
                   barGroups: [
                     for (var i = 0; i < values.length; i++)

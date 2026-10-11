@@ -18,6 +18,7 @@ class CategoryBreakdownCard extends StatelessWidget {
 
     for (final tx in transactions) {
       if (!tx.isExpense) continue;
+      if (tx.categoryId == 'investimentos') continue;
       totals[tx.categoryName] = (totals[tx.categoryName] ?? 0) + tx.amount;
       colors[tx.categoryName] = tx.categoryColor;
       grandTotal += tx.amount;

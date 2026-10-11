@@ -220,7 +220,7 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Receitas',
+                                    label: 'Entradas',
                                     value: stats.income,
                                     color: AppColors.income,
                                     icon: Icons.arrow_upward,
@@ -233,7 +233,7 @@ class _MonthSummaryScreenState extends State<MonthSummaryScreen> {
                               children: [
                                 Expanded(
                                   child: _BigMetric(
-                                    label: 'Gastos fixos',
+                                    label: 'Gastos fixas',
                                     value: stats.expenseFixed,
                                     color: AppColors.accent,
                                     icon: Icons.push_pin_outlined,

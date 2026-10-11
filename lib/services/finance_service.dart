@@ -148,6 +148,33 @@ class FinanceService {
               .toSet(),
         );
   }
+  static Future<void> toggleSkippedMonth({
+    required String id,
+    required String monthKey,
+    required bool skipped,
+  }) async {
+    await _fixedCosts.doc(id).update({
+      'skippedMonths': skipped
+          ? FieldValue.arrayUnion([monthKey])
+          : FieldValue.arrayRemove([monthKey]),
+    });
+  }
 
 
+  static Future<Set<String>> getPaidFixedCosts(DateTime month) async {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 1);
+
+    final snap = await _transactions
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThan: Timestamp.fromDate(end))
+        .get();
+
+    return snap.docs
+        .map((doc) => doc.data()['fixedCostId'] as String?)
+        .whereType<String>()
+        .toSet();
+  }
+
+  
 }

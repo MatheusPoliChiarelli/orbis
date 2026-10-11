@@ -190,8 +190,18 @@ class _TransactionDialogState extends State<TransactionDialog> {
 
     if (!mounted) return;
 
+    final paid = await FinanceService.getPaidFixedCosts(widget.date);
+    final key = monthKey(widget.date);
+
+ 
+
     setState(() {
-      _fixedOptions = month.parents;
+      _fixedOptions = month.parents
+          .where((item) => !item.isSkipped(key))
+          .where((item) =>
+              !paid.contains(item.id) ||
+              item.id == widget.existing?.fixedCostId)
+          .toList();
       _loadingFixed = false;
       final existing = widget.existing;
       if (existing?.fixedCostId != null) {

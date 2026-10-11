@@ -8,6 +8,7 @@ class MonthStats {
     required this.expense,
     required this.expenseFixed,
     required this.expenseVariable,
+    required this.investment,
     required this.count,
     required this.dailyIncome,
     required this.dailyExpense,
@@ -22,10 +23,17 @@ class MonthStats {
     required this.closing,
   });
 
+  /// Entradas do período.
   final double income;
+
+  /// Saídas que não são investimento.
   final double expense;
   final double expenseFixed;
   final double expenseVariable;
+
+  /// Total alocado em investimentos. Fica fora das métricas.
+  final double investment;
+
   final int count;
 
   /// Índice 0 é o dia 1 do mês.
@@ -102,15 +110,22 @@ class MonthStats {
     var expense = 0.0;
     var expenseFixed = 0.0;
     var expenseVariable = 0.0;
+    var investment = 0.0;
     var count = 0;
 
     for (final tx in transactions) {
       if (!isGeneral && tx.accountId != accountId) continue;
       if (tx.isTransfer) continue;
 
-      count++;
       final index = tx.date.day - 1;
       if (index < 0 || index >= daysInMonth) continue;
+
+      if (tx.categoryId == 'investimentos') {
+        investment += tx.amount;
+        continue;
+      }
+
+      count++;
 
       if (tx.isIncome) {
         income += tx.amount;
@@ -148,6 +163,7 @@ class MonthStats {
       expense: expense,
       expenseFixed: expenseFixed,
       expenseVariable: expenseVariable,
+      investment: investment,
       count: count,
       dailyIncome: dailyIncome,
       dailyExpense: dailyExpense,
